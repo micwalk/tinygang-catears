@@ -1,3 +1,11 @@
+# Glittercats
+## bedpimp notes:
+- Building on an M1 Mac using VS Code and PlatformIO
+- Reasonable video for n00bs : https://www.youtube.com/watch?v=tc3Qnf79Ny8
+- Visual Studio Code : https://code.visualstudio.com/download
+- PlatformIO : https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide (It will prompt for additional dependencies)
+- ESP WROOM 32 ESP32 Development Board : https://www.amazon.com/dp/B09GK74F7N
+
 # tinygang
 All things related to tiny gang activites. TinyGang is an open source wearable project consisting of a set of jackets that communicate wirelessly with each other through proximity and motion. The patterns of the group change depending on the mode, number of people, duration and other elements to be defined by the group wearing the jackets.
 
@@ -91,4 +99,10 @@ additional works can include sensors to learn about the dynamic of social intera
 http://twitter.com/tinyjacketgang
 
 https://www.instagram.com/tinyjacketgang/
+
+#glittercats
+
+https://twitter.com/theglittercats
+
+https://www.instagram.com/the.glitter.cats/
 
