@@ -3,6 +3,8 @@
 - Building on an M1 Mac using VS Code and PlatformIO
 - Reasonable video for n00bs : https://www.youtube.com/watch?v=tc3Qnf79Ny8
 - ESP WROOM 32 ESP32 Development Board : https://www.amazon.com/dp/B09GK74F7N
+- LEDs - https://www.amazon.com/dp/B01CDTEJBG
+- Pigtails : https://www.amazon.com/dp/B01DH7VMP4
 - UART to USB drivers for referenced board : https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads
 - Visual Studio Code : https://code.visualstudio.com/download
 - PlatformIO : https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide (It will prompt for additional dependencies)
