@@ -7,6 +7,8 @@
 - Visual Studio Code : https://code.visualstudio.com/download
 - PlatformIO : https://marketplace.visualstudio.com/items?itemName=platformio.platformio-ide (It will prompt for additional dependencies)
 
+- Possible wearable board : https://www.amazon.com/Seeed-Studio-XIAO-ESP32C3-Microcontroller/dp/B0B94JZ2YF/
+
 # tinygang
 All things related to tiny gang activites. TinyGang is an open source wearable project consisting of a set of jackets that communicate wirelessly with each other through proximity and motion. The patterns of the group change depending on the mode, number of people, duration and other elements to be defined by the group wearing the jackets.
 
