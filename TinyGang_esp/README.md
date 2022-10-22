@@ -1,0 +1,1 @@
+From @micwalk : yeah the dip switch is used for mode select -- read w/ the choosePattern function so easy to shim that function if you don't have a physical switch: https://github.com/bedpimp/tinygang/blob/main/TinyGang_esp/TinyGang_esp.ino#L313
