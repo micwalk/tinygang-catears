@@ -3,6 +3,7 @@
 - Building on an M1 Mac using VS Code and PlatformIO
 - Reasonable video for n00bs : https://www.youtube.com/watch?v=tc3Qnf79Ny8
 - ESP WROOM 32 ESP32 Development Board : https://www.amazon.com/dp/B09GK74F7N
+- Board docs : https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 - LEDs - https://www.amazon.com/dp/B01CDTEJBG
 - ~~Pigtails : https://www.amazon.com/dp/B01DH7VMP4~~ I'm not sure these are correct for the LED strip listed
 - UART to USB drivers for referenced board : https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads
