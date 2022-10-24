@@ -244,6 +244,7 @@ int choosePattern() {
   if (swA == 0 && swB == 1) return 1;
   if (swA == 1 && swB == 0) return 2;
   if (swA == 1 && swB == 1) return 3;
+  EXIT_SUCCESS;
 }
 
 void checkPatternTimer() {
