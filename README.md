@@ -12,6 +12,14 @@
 
 - Possible wearable board : https://www.amazon.com/Seeed-Studio-XIAO-ESP32C3-Microcontroller/dp/B0B94JZ2YF/
 
+## Thoughts
+- Collar w/round display
+- Vibrating ears for lost kitty mode, maybe for directions
+- Totem as leader
+- Raspberry Pi to use as an upload station
+- 3d printed silicone molds for ears
+- Playing with lights and flash jackets
+
 # tinygang
 All things related to tiny gang activites. TinyGang is an open source wearable project consisting of a set of jackets that communicate wirelessly with each other through proximity and motion. The patterns of the group change depending on the mode, number of people, duration and other elements to be defined by the group wearing the jackets.
 
