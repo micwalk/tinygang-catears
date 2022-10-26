@@ -11,6 +11,8 @@
 #define COLOR_ORDER GRB
 #define CHIPSET     WS2812B
 #define NUM_LEDS    72
+const uint8_t MAX_VOLTS = 5;
+const uint32_t MAX_MILLIAMPS = 500;
 
 #include <elapsedMillis.h>
 
@@ -38,9 +40,9 @@ Pattern* patterns[] = {
   new BookendTrace(),
   new Twinkler()
 };
+const size_t PATTERNS_COUNT = (sizeof(patterns)) / 4;
 
 int inboundHue = 229; // incoming char sets color
-
 int ledHue[] = { 0, 20, 255, 229, 229, 200};
 // 120 was cyan
 // 229 pink
@@ -48,24 +50,18 @@ int ledHue[] = { 0, 20, 255, 229, 229, 200};
 // 200 lilac
 // 'a' green
 
-elapsedMillis ellapseTimeMs[(sizeof(patterns)) / 4];
+elapsedMillis ellapseTimeMs[PATTERNS_COUNT];
 
-float crazyDuration = 5000;
-float regularDuration = 2000;
-float fastDuration = 2000;
-float durationMs = regularDuration;
+const float PATTERN_DURATION = 4000;
+float durationMs = PATTERN_DURATION;
 
-float repeatDurationMs = 7000;
-float repeatCrazyMs = 3000;
+float repeatDurationMs = 8000; //Will display an animation every this often.
 boolean sentAlready = false; // send message boolean
 
 elapsedMillis sendEllapseMs;
-float sendMs = 2000;
 
-String inputString = "";         // a string to hold incoming data
-boolean stringComplete = false;  // whether the string is complete
-
-CRGB led[(sizeof(patterns)) / 4][NUM_LEDS]; //
+//Per pattern Leds?
+CRGB led[PATTERNS_COUNT][NUM_LEDS]; //
 
 // Define the array of leds
 CRGB leds_right[NUM_LEDS];
@@ -95,9 +91,8 @@ int dipswitch_pins[] = {2, 15};
 //************************************************************
 #include <painlessMesh.h>
 
-             // some gpio pin that is connected to an LED...
-             // on my rig, this is 5, change to the right number of your LED.
-#define   STATUS_LED             LED_BUILTIN       // GPIO number of connected LED, ON ESP-12 IS GPIO2
+// some gpio pin that is connected to an LED to incicate wifi status. change to the right number of your LED.
+#define   STATUS_LED      LED_BUILTIN       // GPIO number of connected LED, ON ESP-12 IS GPIO2
 
 #define   BLINK_PERIOD    3000 // milliseconds until cycle repeat
 #define   BLINK_DURATION  100  // milliseconds LED is on for
@@ -106,7 +101,7 @@ int dipswitch_pins[] = {2, 15};
 #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT       5555
 
-// Prototypes
+// Prototypes For painlessMesh
 void sendMessage();
 void receivedCallback(uint32_t from, String & msg);
 void newConnectionCallback(uint32_t nodeId);
@@ -115,12 +110,12 @@ void nodeTimeAdjustedCallback(int32_t offset);
 void delayReceivedCallback(uint32_t from, int32_t delay);
 
 //More Declarations
-boolean isRegular();
-boolean isCrazy();
 void checkPatternTimer();
+void broadcastPattern();
 void receiveMeshMsg(char inChar);
 void setupPainlessMesh();
-int choosePattern();
+int getChosenPattern();
+void updateLedColors();
 void show();
 
 //Painless Mesh Setup
@@ -138,50 +133,42 @@ Task blinkNoNodes;
 bool onFlag = false;
 
 void setup() {
-  
+
+  const unsigned long BAUD = 921600;
   // put your setup code here, to run once:
-  Serial.begin(921600);
+  Serial.begin(BAUD);
   Serial.println("\n\n******TinyGang Reset******");
+  Serial.println(__FILE__);
+  Serial.println(__DATE__);
   
   // // setup dipswitch
   // for (int i = 0 ; i < 2; i++) {
   //   pinMode(dipswitch_pins[i], INPUT_PULLUP);
   // }
-
   
   //TODO: Better user configurable LED setup
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds_right, NUM_LEDS).setCorrection( TypicalLEDStrip );
-  FastLED.setBrightness(10);
+  FastLED.setBrightness(50);
+  FastLED.setMaxPowerInVoltsAndMilliamps(MAX_VOLTS, MAX_MILLIAMPS);
+
   FastLED.setDither( 0 );
 
-  Serial.print("uploaded.. ");
-  Serial.println(__FILE__);
-
-  Serial.print("reseting jacket.. ");
-  Serial.println(__DATE__);
-
   // For adding a switch to have a pattern that is always on vs regular
-  Serial.print("jacket switch is");
-  if (isCrazy()) {
-    Serial.println(" CRAZY");
-  }
-  if (isRegular()) {
-    Serial.println(" REGULAR");
-  }
-
-  for (int i = 0; i < (sizeof(patterns)) / 4; i++) {
+  for (int i = 0; i < PATTERNS_COUNT; i++) {
     for (int j = 0; j < NUM_LEDS; j ++) {
       //led[i][j] = CHSV(100,100,100);
-      led[i][j] = CHSV(255 / NUM_LEDS * j, 255 / (sizeof(patterns)) / 4 * i, 255);
+      led[i][j] = CHSV(255 / NUM_LEDS * j, 255 / PATTERNS_COUNT * i, 255);
     }
   }
-
-  inputString.reserve(200);
 
   setupPainlessMesh();
 }
 
 void loop() {
+  
+  // auto btnVal = digitalRead(pushbutton_pin);
+  // Serial.printf("%u: BtnVal: %i\n", millis(), btnVal);
+  
   // float tmpElapsed = ellapseTimeMs[myPatternId]/1000;
   // Serial.printf("Current Pattern: %i Time: %f\n", myPatternId, tmpElapsed);
   
@@ -190,42 +177,46 @@ void loop() {
   // This is data that's already arrived and stored in the
   // serial receive buffer (which holds 64 bytes).
 
+  // This can be used to force sending a message from the keyboard while debugging.
   while (Serial.available()) {
     char inChar = (char)Serial.read();
     Serial.println("Got msg from serial read.");
     receiveMeshMsg(inChar);
   }
 
-  /*
-    // autosend every 2s
-    if (ellapseTimeMs[0] > sendMs) {
-    // Serial1.print('a');
-    Serial.print('a');
-    sendEllapseMs = 0;
-    }
-  */
-  
   checkPatternTimer();
-  
-  // send message to other jacket after pattern duration
-  if (false == sentAlready) {
-    //if (ellapseTimeMs[MY_PATTERN_ID] > durationMs / 4) { // sending halfway through
-    if (ellapseTimeMs[myPatternId] > 0) { // sending halfway through
-      Serial.print("sending::");
-      Serial.print(" my-pattern-id:");
-      Serial.print(myPatternId);
-      // Serial1.print((char)ledHue[myPatternId]); // sending color to IMU jackets
-      Serial.print(" cmd:");
-      Serial.println(patternCommand[myPatternId]);
-      // Serial1.print(patternCommand[myPatternId]);
-      sentAlready = true;
-      String msg = (String)patternCommand[myPatternId];
-      mesh.sendBroadcast(msg);
-    }
-  }
+  broadcastPattern();
+  updateLedColors();
+  show();
+  delay(10);
 
+  // painless mesh
+  mesh.update();
+  digitalWrite(STATUS_LED, !onFlag);
+}
+
+//Broadcasts current pattern to others on the mesh.
+void broadcastPattern() {
+  //If already sent or not playing yet, then don't broadcast
+  if(sentAlready || ellapseTimeMs[myPatternId] <= 0) return;
+
+  // send message to other jacket
+  Serial.printf("%u: SENDING::", millis());
+  Serial.print(" my-pattern-id:");
+  Serial.print(myPatternId);
+  // Serial1.print((char)ledHue[myPatternId]); // sending color to IMU jackets
+  Serial.print(" cmd:");
+  Serial.println(patternCommand[myPatternId]);
+  // Serial1.print(patternCommand[myPatternId]);
   
-  for (int i = 0; i < (sizeof(patterns)) / 4; i++) {
+  String msg = (String)patternCommand[myPatternId];
+  //TODO: enhance message to include time remaining?
+  mesh.sendBroadcast(msg);
+  sentAlready = true;
+}
+
+void updateLedColors() {
+  for (int i = 0; i < PATTERNS_COUNT; i++) {
     for (int j = 0; j < NUM_LEDS; j ++) {
     // check timers for all patterns
       if (ellapseTimeMs[i] > durationMs ) {
@@ -240,20 +231,12 @@ void loop() {
         if (i == myPatternId) {
           color = ledHue[i];
         }
-        led[0][j] = patterns[i]->paintLed (position, remaining, led[0][j], color);
+        led[0][j] = patterns[i]->paintLed(position, remaining, led[0][j], color);
         //Serial.println(ledHue[i]);
       }
     }
   }
-
-  show();
-  delay(10);
-
-  // painless mesh
-  mesh.update();
-  digitalWrite(STATUS_LED, !onFlag);
-}
-
+} 
 
 void show() {
 
@@ -274,8 +257,8 @@ void show() {
       break;
     case JACKET2:
       for (int i = 0; i < NUM_LEDS; i ++) {
-        leds_right[i] = led[0][i];
         leds_left[i] = led[0][i];
+        leds_right[i] = led[0][i];
       }
       break;
   }
@@ -290,25 +273,26 @@ void checkPatternTimer() {
   // set the ellapseTimeMs to 0, which triggers 
   // all actions
   
-  myPatternId = choosePattern();
-  float repeatMs = repeatDurationMs;
+  myPatternId = getChosenPattern();
 
   // autofire over repeat duration
-  if (ellapseTimeMs[myPatternId] > repeatMs) {
-    Serial.printf("Selecting new pattern: %i\n", myPatternId);
+  if (ellapseTimeMs[myPatternId] > repeatDurationMs) {
+    //Serial.printf("%u: Repeating my pattern: %i\n", millis(), myPatternId);
     // pattern fires when ellapseTimeMs of the pattern is 0
+    Serial.printf("%u: Starting own pattern: %i\n", millis(), myPatternId);
     ellapseTimeMs[myPatternId] = 0;
-    durationMs = regularDuration;
+    durationMs = PATTERN_DURATION;
     sentAlready = false;
   }
   return;
 }
 
-int choosePattern(){
-  //no dip switch so choose randomly
-  //TODO: refactor 6 to num patterns...
-  return random(6);
-  //
+const int CHOSEN_PATTERN = 5;
+int getChosenPattern() {
+  return CHOSEN_PATTERN;
+  
+  //Unreachable code warning, whatever
+  //TODO: change to btn cycle??
   int swA = digitalRead(dipswitch_pins[0]);
   int swB = digitalRead(dipswitch_pins[1]);
   if (swA == 0 && swB == 0) return 0;
@@ -320,40 +304,26 @@ int choosePattern(){
   return 0;
 }
 
-void fadeall() {
-  for (int i = 0; i < NUM_LEDS; i++) {
-    leds_right[i].nscale8(200);
-    leds_left[i].nscale8(200);
-  }
-}
-
-boolean isRegular() {
-  return !isCrazy();
-  //digitalRead(10);
-}
-
-boolean isCrazy() {
-  return false;
-  //digitalRead(12);
-}
-
 // painless mesh
 
 void receiveMeshMsg(char inChar) {
-  
-  Serial.printf("receiveMeshMsg: %c. Pattern Count: %u\n", inChar, sizeof(patterns) / 4);
+  bool patternFound = false;
   
   // read the incoming character and check it's index,
   // start the corresponding pattern ID by setting its timer to 0
-  for  (int i = 0; i < sizeof(patternCommand); i++) {
+  for (int i = 0; i < std::min(PATTERNS_COUNT, sizeof(patternCommand)); i++) {
     if (inChar == patternCommand[i]) {
+      Serial.printf("%u: Message: %c. Corresponds to pattern %i. Resetting that pattern. PatternCount: %u\n", 
+      millis(), inChar, i, PATTERNS_COUNT);
+      Serial.printf("%u: Starting other pattern: %i\n", millis(), i);
       ellapseTimeMs[i] = 0;
-      //durationMs = regularDuration;
-    } else {
-      // if incoming characters do not correspond to pattern ID
-      // it sets the jacket color
-      inboundHue = inChar;
     }
+  }
+  
+  // if incoming characters do not correspond to pattern ID 
+  // then set inbound color (jacket color)
+  if( !patternFound) {
+    inboundHue = inChar;
   }
 }
 
@@ -394,14 +364,16 @@ void setupPainlessMesh() {
 }
 
 void sendMessage() {
-  Serial.println("**TaskSendMessage**");
   
-  String msg = "Hello from node ";
-  msg += mesh.getNodeId();
-  msg += " myFreeMemory: " + String(ESP.getFreeHeap());
-  //mesh.sendBroadcast(msg);
+  // String msg = "Hello from node ";
+  // msg += mesh.getNodeId();
+  // msg += " myFreeMemory: " + String(ESP.getFreeHeap());
+  //Serial.printf("Sending message: %s\n", msg.c_str());
+  // mesh.sendBroadcast(msg);
 
   if (calc_delay) {
+    Serial.println("%u: TaskSendMessage launching delay calculation");
+    
     SimpleList<uint32_t>::iterator node = nodes.begin();
     while (node != nodes.end()) {
       mesh.startDelayMeas(*node);
@@ -410,13 +382,12 @@ void sendMessage() {
     calc_delay = false;
   }
 
-  //Serial.printf("Sending message: %s\n", msg.c_str());
 
   taskSendMessage.setInterval( random(TASK_SECOND * 1, TASK_SECOND * 5));  // between 1 and 5 seconds
 }
 
 void receivedCallback(uint32_t from, String & msg) {
-  Serial.printf("painlessMesh: Received from %u msg=%s\n", from, msg.c_str());
+  Serial.printf("%u: painlessMesh: Received from %u msg=%s\n", millis(), from, msg.c_str());
   receiveMeshMsg(msg[0]);
 }
 
@@ -428,8 +399,8 @@ void resetBlinkTask(){
 }
 
 void newConnectionCallback(uint32_t nodeId) {
-  Serial.printf("--> painlessMesh: New Connection, nodeId = %u\n", nodeId);
-  Serial.printf("--> painlessMesh: New Connection, %s\n", mesh.subConnectionJson(true).c_str());
+  Serial.printf("%u: --> painlessMesh: New Connection, nodeId = %u\n", millis(), nodeId);
+  Serial.printf("%u: --> painlessMesh: New Connection, %s\n", millis(), mesh.subConnectionJson(true).c_str());
   
   resetBlinkTask();
 }

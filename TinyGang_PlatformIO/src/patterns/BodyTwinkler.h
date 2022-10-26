@@ -15,22 +15,14 @@ public:
     normalizedHue -= 255;
   }
 
-    if(remaining > 0.95) {
-      if(50 > random(100)) {
+    float rand01 = ((float)random(100)) / 100;
+    float thresh = remaining - .05;
+    thresh *= thresh;
+    
+    if(rand01 < thresh) {
         return CHSV(normalizedHue, 225, 128);
-      }
-    } 
-
-    if(remaining > 0.85) {
-      if(10 > random(100)) {
-        return CHSV(normalizedHue, 225, 64);
-      }
-    } 
-
-
-    if(10 > random(100)) {
-
-      return previous.nscale8(32);
+    } else {
+      return previous.nscale8(16);
     }
 
     return previous;
