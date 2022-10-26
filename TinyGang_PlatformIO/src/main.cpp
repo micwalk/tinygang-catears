@@ -7,7 +7,8 @@
 #include <Arduino.h>
 #include <FastLED.h>
 
-#define LED_PIN     4
+
+const unsigned char LED_PIN = 4; //14 on lhs board, 4 on rhs
 #define COLOR_ORDER GRB
 #define CHIPSET     WS2812B
 #define NUM_LEDS    72
@@ -75,9 +76,32 @@ char patternCommand[] = {
 };
 
 //****************
-// DIP SWITCHES
+//User pattern selection
+//Three methods supported: push button, dip switch, or const
+//Uncomment the define relevant to your hardware
+#define PATTERN_SELECT_PUSHBTN
+// #define PATTERN_SELECT_DIPSWITCH
+//#define PATTERN_SELECT_CONST
 
-int dipswitch_pins[] = {2, 15};
+#if defined(PATTERN_SELECT_PUSHBTN)
+  // PUSH BUTTON Config
+  #include "OneButton.h"
+  const uint8_t PUSHBUTTON_PIN = 5;
+  // Setup a new OneButton on pin A1.  
+  void onPatternChangeClick();
+  OneButton cyclePatternBtn(PUSHBUTTON_PIN, true);
+  int chosenPattern = 3; //Current pattern state
+#elif defined(PATTERN_SELECT_DIPSWITCH)
+  // DIP SWITCHES Config
+  const int dipswitch_pins[] = {2, 15};
+#elif defined(PATTERN_SELECT_CONST)
+  const int USER_PATTERN = 0;
+#endif
+
+
+
+
+
 
 //************************************************************
 // this is a simple example that uses the easyMesh library
@@ -141,11 +165,18 @@ void setup() {
   Serial.println(__FILE__);
   Serial.println(__DATE__);
   
-  // // setup dipswitch
-  // for (int i = 0 ; i < 2; i++) {
-  //   pinMode(dipswitch_pins[i], INPUT_PULLUP);
-  // }
-  
+  #if defined(PATTERN_SELECT_PUSHBTN)
+    //Setup pushbutton
+    cyclePatternBtn.attachClick(onPatternChangeClick);
+    // pinMode(PUSHBUTTON_PIN, INPUT);
+  #elif defined(PATTERN_SELECT_DIPSWITCH)
+    // setup dipswitch
+    for (int i = 0 ; i < 2; i++) {
+      pinMode(dipswitch_pins[i], INPUT_PULLUP);
+    }
+  #endif
+  //No setup needed for const
+
   //TODO: Better user configurable LED setup
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds_right, NUM_LEDS).setCorrection( TypicalLEDStrip );
   FastLED.setBrightness(50);
@@ -164,13 +195,11 @@ void setup() {
   setupPainlessMesh();
 }
 
-void loop() {
-  
-  // auto btnVal = digitalRead(pushbutton_pin);
-  // Serial.printf("%u: BtnVal: %i\n", millis(), btnVal);
-  
-  // float tmpElapsed = ellapseTimeMs[myPatternId]/1000;
-  // Serial.printf("Current Pattern: %i Time: %f\n", myPatternId, tmpElapsed);
+void loop() {  
+  //Only btn PUSHBTN needs a loop callback.
+  #if defined(PATTERN_SELECT_PUSHBTN)
+    cyclePatternBtn.tick();
+  #endif
   
   // available() -- Get the number of bytes (characters) available
   // for reading from the serial port.
@@ -193,6 +222,32 @@ void loop() {
   // painless mesh
   mesh.update();
   digitalWrite(STATUS_LED, !onFlag);
+}
+
+#if defined(PATTERN_SELECT_PUSHBTN)
+  void onPatternChangeClick() {
+    auto btnVal = digitalRead(PUSHBUTTON_PIN);
+    int oldPattern = chosenPattern;
+    chosenPattern = (oldPattern + 1) % PATTERNS_COUNT;
+    Serial.printf("%u: Button Clicked Callback!. Changing Pattern from %i to %i\n", millis(), oldPattern, chosenPattern);
+  }
+#endif
+
+
+int getChosenPattern() {
+#if defined(PATTERN_SELECT_PUSHBTN)
+  return chosenPattern;  
+#elif defined(PATTERN_SELECT_DIPSWITCH)
+  int swA = digitalRead(dipswitch_pins[0]);
+  int swB = digitalRead(dipswitch_pins[1]);
+  if (swA == 0 && swB == 0) return 0;
+  if (swA == 0 && swB == 1) return 1;
+  if (swA == 1 && swB == 0) return 2;
+  if (swA == 1 && swB == 1) return 3;
+  return 0; //Default..
+#elif defined(PATTERN_SELECT_CONST)
+  return USER_PATTERN;
+#endif
 }
 
 //Broadcasts current pattern to others on the mesh.
@@ -273,7 +328,16 @@ void checkPatternTimer() {
   // set the ellapseTimeMs to 0, which triggers 
   // all actions
   
+  auto oldPatternId = myPatternId;
   myPatternId = getChosenPattern();
+  
+  bool patternChanged = oldPatternId != myPatternId;
+  
+  if(patternChanged) {
+    Serial.printf("Pattern switch detected from %i to %i\n", oldPatternId, myPatternId);
+    //Might want to do something special?? 
+    //TODO: Create startPattern / pattern renderer class and pattern selector class. 
+  }
 
   // autofire over repeat duration
   if (ellapseTimeMs[myPatternId] > repeatDurationMs) {
@@ -285,23 +349,6 @@ void checkPatternTimer() {
     sentAlready = false;
   }
   return;
-}
-
-const int CHOSEN_PATTERN = 5;
-int getChosenPattern() {
-  return CHOSEN_PATTERN;
-  
-  //Unreachable code warning, whatever
-  //TODO: change to btn cycle??
-  int swA = digitalRead(dipswitch_pins[0]);
-  int swB = digitalRead(dipswitch_pins[1]);
-  if (swA == 0 && swB == 0) return 0;
-  if (swA == 0 && swB == 1) return 1;
-  if (swA == 1 && swB == 0) return 2;
-  if (swA == 1 && swB == 1) return 3;
-  
-  //Default..
-  return 0;
 }
 
 // painless mesh
