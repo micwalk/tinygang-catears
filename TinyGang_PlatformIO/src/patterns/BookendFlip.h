@@ -10,7 +10,7 @@ class BookendFlip : public Pattern {
 			return CHSV(primaryHue, 160, 64);
 
 		// fade
-		return previous.nscale8(192);
+		return previous.nscale8(30);
 
 		/*
 		  return color(

@@ -7,7 +7,7 @@ class BookendTrace : public Pattern {
 	CRGB paintLed(float position, float remaining, CRGB previous, int primaryHue) {
 		// trace
 		// return CHSV(primaryHue, 255, 255);
-		if ((abs(sq(position - .5) - remaining)) < .7) {
+		if (abs(abs(position - .5) - remaining) < .7) {
 			return CHSV(primaryHue, 225, 255);
 		}
 
@@ -15,7 +15,7 @@ class BookendTrace : public Pattern {
 		// return CHSV(140, 160, 128); cyan
 
 		// fade
-		return previous.nscale8(192);
+		return previous.nscale8(20);
 	}
 };
 

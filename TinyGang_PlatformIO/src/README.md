@@ -34,3 +34,15 @@ Pattern Blending: it does sometimes appear to blend patterns, but it doesn't see
     Implement leader selection
 2. Send time remaining for better sync
 3. Dynamic pattern precidence 
+
+## Wire Protocol Differences
+### Wire Protocol V1 - Original TinyGang.ino
+Two bytes are sent in sequence.
+Byte 1: the chosen hue / color
+Byte 2: the "pattern command", a single ASCII character that is tranlsated into a patternID
+### Wire Protocol V2 - TinyGang_esp
+Only one Byte is sent, corresponding to the "pattern command" as above.
+Backwards compatability is semi preserved, where if the pattern command is unmatched, then this is instead interpreted as a hue.
+
+### Wire Protocol V3 - TinyGang_PlatformIO aka GlitterCats
+For now, attempting to maintain the same as protocol V2 but subject to change!

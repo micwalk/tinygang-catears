@@ -5,7 +5,11 @@
 */
 
 #include <Arduino.h>
+//Note: for these two, must include FastLED and elapsedMillis libraries in your Audrino IDE/platformIO
 #include <FastLED.h>
+#include <elapsedMillis.h>
+
+#include "PatternRunner.h"
 
 const unsigned char LED_PIN = 4;  // 14 on lhs board, 4 on rhs
 #define COLOR_ORDER GRB
@@ -14,56 +18,30 @@ const unsigned char LED_PIN = 4;  // 14 on lhs board, 4 on rhs
 const uint8_t MAX_VOLTS = 5;
 const uint32_t MAX_MILLIAMPS = 500;
 
-#include <elapsedMillis.h>
-
-#include "patterns/BassShader.h"
-#include "patterns/BodyTwinkler.h"
-#include "patterns/BookendFlip.h"
-#include "patterns/BookendTrace.h"
-#include "patterns/RainbowSparkle.h"
-#include "patterns/Twinkler.h"
-#include "patterns/WhiteTrace.h"
-
-#define JACKET1 1  // use this when other jacket is HR, otherwise 0
-#define JACKET2 0  // we used JACKET2 0 for white jacket
-
-#define WHOSE_HARDWARE JACKET1  // little black jacet with one long strip split to two connectors
-
 int myPatternId = 0;
 
-Pattern *patterns[] = {
-	new BodyTwinkler(),    // red yellow sparkle short
-	new BassShader(),      // pattern individually triggered
-	new RainbowSparkle(),  // more pale pink and blue
-	new WhiteTrace(),
-	new BookendTrace(),
-	new Twinkler()};
-const size_t PATTERNS_COUNT = (sizeof(patterns)) / 4;
-
-int inboundHue = 229;  // incoming char sets color
-int ledHue[] = {0, 20, 255, 229, 229, 200};
+int legacy_inbound_hue = 229;  // incoming char sets color
 // 120 was cyan
 // 229 pink
 // 22 orange
 // 200 lilac
 // 'a' green
 
-elapsedMillis ellapseTimeMs[PATTERNS_COUNT];
 
+//Pattern running info
 const float PATTERN_DURATION = 4000;
-float durationMs = PATTERN_DURATION;
-
 float repeatDurationMs = 8000;  // Will display an animation every this often.
-boolean sentAlready = false;    // send message boolean
+boolean sentAlready = false;    // State to track if we broadcasted our pattern yet
 
-elapsedMillis sendEllapseMs;
+PatternRunner<NUM_LEDS> patternRunner(PATTERN_DURATION);
 
-// Per pattern Leds?
-CRGB led[PATTERNS_COUNT][NUM_LEDS];  //
-
-// Define the array of leds
-CRGB leds_right[NUM_LEDS];
-CRGB leds_left[NUM_LEDS];
+//Rendering patterns to LEDs info
+enum RenderType {
+	RENDER_NORMAL,
+	RENDER_MIRRORED
+};
+const RenderType RENDER_TYPE = RENDER_NORMAL;
+CRGB render_leds[NUM_LEDS];
 
 char patternCommand[] = {
 	'q', 'a', 'z',
@@ -130,7 +108,6 @@ void broadcastPattern();
 void receiveMeshMsg(char inChar);
 void setupPainlessMesh();
 int getChosenPattern();
-void updateLedColors();
 void show();
 
 // Painless Mesh Setup
@@ -168,19 +145,13 @@ void setup() {
 	// No setup needed for const
 
 	// TODO: Better user configurable LED setup
-	FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds_right, NUM_LEDS).setCorrection(TypicalLEDStrip);
+	FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(render_leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 	FastLED.setBrightness(50);
 	FastLED.setMaxPowerInVoltsAndMilliamps(MAX_VOLTS, MAX_MILLIAMPS);
 
 	FastLED.setDither(0);
 
-	// For adding a switch to have a pattern that is always on vs regular
-	for (int i = 0; i < PATTERNS_COUNT; i++) {
-		for (int j = 0; j < NUM_LEDS; j++) {
-			// led[i][j] = CHSV(100,100,100);
-			led[i][j] = CHSV(255 / NUM_LEDS * j, 255 / PATTERNS_COUNT * i, 255);
-		}
-	}
+	patternRunner.setup();
 
 	setupPainlessMesh();
 }
@@ -205,7 +176,7 @@ void loop() {
 
 	checkPatternTimer();
 	broadcastPattern();
-	updateLedColors();
+	patternRunner.updateLedColors(); //TODO: send legacy_inbound_hue again?
 	show();
 	delay(10);
 
@@ -242,14 +213,13 @@ int getChosenPattern() {
 // Broadcasts current pattern to others on the mesh.
 void broadcastPattern() {
 	// If already sent or not playing yet, then don't broadcast
-	if (sentAlready || ellapseTimeMs[myPatternId] <= 0)
-		return;
+	if (sentAlready || patternRunner.PatternElapsed(myPatternId) <= 0) return;
 
 	// send message to other jacket
 	Serial.printf("%u: SENDING::", millis());
 	Serial.print(" my-pattern-id:");
 	Serial.print(myPatternId);
-	// Serial1.print((char)ledHue[myPatternId]); // sending color to IMU jackets
+	// Serial1.print((char)PATTERN_HUE[myPatternId]); // sending color to IMU jackets
 	Serial.print(" cmd:");
 	Serial.println(patternCommand[myPatternId]);
 	// Serial1.print(patternCommand[myPatternId]);
@@ -260,49 +230,23 @@ void broadcastPattern() {
 	sentAlready = true;
 }
 
-void updateLedColors() {
-	for (int i = 0; i < PATTERNS_COUNT; i++) {
-		for (int j = 0; j < NUM_LEDS; j++) {
-			// check timers for all patterns
-			if (ellapseTimeMs[i] > durationMs) {
-				// led[i][j] = CHSV(100,100,100);
-				led[i][j] = 0;  // turn all LED to black once time hits
-			} else {
-				float position = (float)j / (float)NUM_LEDS;
-				float remaining = 1.0 - ellapseTimeMs[i] / durationMs;
-				// set color to be the incoming message color
-				int color = inboundHue;
-				// if own pattern, then lookup color array
-				if (i == myPatternId) {
-					color = ledHue[i];
-				}
-				led[0][j] = patterns[i]->paintLed(position, remaining, led[0][j], color);
-				// Serial.println(ledHue[i]);
-			}
-		}
-	}
-}
-
 void show() {
 	// jacket 1 and 2 have different mappings for their led strips
 	// jacket 1 is mirrored, jacket 2 is mirrored
 	int half_leds = (NUM_LEDS / 2);
 
-	switch (WHOSE_HARDWARE) {
-		case JACKET1:
+	switch (RENDER_TYPE) {
+		case RENDER_MIRRORED:
 			for (int i = 0; i < half_leds; i++) {
-				leds_left[i] = led[0][i];
-				leds_right[i] = led[0][i];
+				render_leds[i] = patternRunner.m_outBuffer[i];
 			}
 			for (int i = 0; i < half_leds; i++) {
-				leds_left[i + half_leds] = led[0][half_leds - i];
-				leds_right[i + half_leds] = led[0][half_leds - i];
+				render_leds[i + half_leds] = patternRunner.m_outBuffer[half_leds - i];
 			}
 			break;
-		case JACKET2:
+		case RENDER_NORMAL:
 			for (int i = 0; i < NUM_LEDS; i++) {
-				leds_left[i] = led[0][i];
-				leds_right[i] = led[0][i];
+				render_leds[i] = patternRunner.m_outBuffer[i];
 			}
 			break;
 	}
@@ -313,9 +257,7 @@ void show() {
 }
 
 void checkPatternTimer() {
-	// sets the timers for my pattern,  when timer goes to 0
-	// set the ellapseTimeMs to 0, which triggers
-	// all actions
+	// Checks chosen pattern and launches own pattern on repeat
 
 	auto oldPatternId = myPatternId;
 	myPatternId = getChosenPattern();
@@ -328,13 +270,10 @@ void checkPatternTimer() {
 		// TODO: Create startPattern / pattern renderer class and pattern selector class.
 	}
 
-	// autofire over repeat duration
-	if (ellapseTimeMs[myPatternId] > repeatDurationMs) {
-		// Serial.printf("%u: Repeating my pattern: %i\n", millis(), myPatternId);
-		//  pattern fires when ellapseTimeMs of the pattern is 0
-		Serial.printf("%u: Starting own pattern: %i\n", millis(), myPatternId);
-		ellapseTimeMs[myPatternId] = 0;
-		durationMs = PATTERN_DURATION;
+	// Automatically start own pattern every repeatDuration
+	if (patternRunner.PatternElapsed(myPatternId) > repeatDurationMs) {
+		Serial.printf("%u: repeatDurationMs has elapsed, restarting self pattern: %i\n", millis(), myPatternId);
+		patternRunner.StartPattern(myPatternId);
 		sentAlready = false;
 	}
 	return;
@@ -349,17 +288,20 @@ void receiveMeshMsg(char inChar) {
 	// start the corresponding pattern ID by setting its timer to 0
 	for (int i = 0; i < std::min(PATTERNS_COUNT, sizeof(patternCommand)); i++) {
 		if (inChar == patternCommand[i]) {
+			patternFound = true;
 			Serial.printf("%u: Message: %c. Corresponds to pattern %i. Resetting that pattern. PatternCount: %u\n",
 			              millis(), inChar, i, PATTERNS_COUNT);
-			Serial.printf("%u: Starting other pattern: %i\n", millis(), i);
-			ellapseTimeMs[i] = 0;
+			patternRunner.StartPattern(i);
 		}
 	}
 
 	// if incoming characters do not correspond to pattern ID
-	// then set inbound color (jacket color)
+	// then the other device must be running wire protocol v1.
+	// Therefore set set inbound pattern color
 	if (!patternFound) {
-		inboundHue = inChar;
+		Serial.printf("%u: Message: %c. Activating legacy handling to set inbound hue\n",
+			              millis(), inChar);
+		legacy_inbound_hue = inChar;
 	}
 }
 
@@ -406,7 +348,7 @@ void sendMessage() {
 	// mesh.sendBroadcast(msg);
 
 	if (calc_delay) {
-		Serial.println("%u: TaskSendMessage launching delay calculation");
+		Serial.printf("%u: TaskSendMessage launching delay calculation\n", millis());
 
 		SimpleList<uint32_t>::iterator node = nodes.begin();
 		while (node != nodes.end()) {
