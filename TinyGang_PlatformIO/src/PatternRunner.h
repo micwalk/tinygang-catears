@@ -9,20 +9,19 @@
 #include "patterns/RainbowSparkle.h"
 #include "patterns/Twinkler.h"
 #include "patterns/WhiteTrace.h"
-
-// TODO: add this one to the rotation!
 #include "patterns/BookendFlip.h"
 
 Pattern *patterns[] = {
-	new BodyTwinkler(),    // red yellow sparkle short
-	new BassShader(),      // pattern individually triggered
-	new RainbowSparkle(),  // more pale pink and blue
-	new WhiteTrace(),
-	new BookendTrace(),
-	new Twinkler(),
-	new BookendFlip()};
-int PATTERN_HUE[] = {0, 20, 255, 229, 229, 200, 160};
-// 120 was cyan
+	new BodyTwinkler(),    // 0 red yellow sparkle short
+	new BassShader(),      // 1 pattern individually triggered
+	new RainbowSparkle(),  // 2 more pale pink and blue
+	new WhiteTrace(),      // 3
+	new BookendTrace(),    // 4
+	new Twinkler(),        // 5
+	new BookendFlip()      // 6
+};
+int PATTERN_HUE[] = {0, 20, 255, 229, 120, 200, 207};
+// 120 should be green, not cyan
 // 229 pink
 // 22 orange
 // 200 lilac
