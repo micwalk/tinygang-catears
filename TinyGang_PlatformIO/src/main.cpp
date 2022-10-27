@@ -11,22 +11,13 @@
 
 #include "PatternRunner.h"
 
-const unsigned char LED_PIN = 4;  // 14 on lhs board, 4 on rhs
-#define COLOR_ORDER GRB
-#define CHIPSET WS2812B
-#define NUM_LEDS 72
-const uint8_t MAX_VOLTS = 5;
-const uint32_t MAX_MILLIAMPS = 500;
+// *** LOOKING TO CHANGE WHAT PIN YOU HAVE ATTACHED? ***
+// *** SEE UserConfig.h ***
+#include "UserConfig.h"
 
+//Some State
 int myPatternId = 0;
-
 int legacy_inbound_hue = 229;  // incoming char sets color
-// 120 was cyan
-// 229 pink
-// 22 orange
-// 200 lilac
-// 'a' green
-
 
 //Pattern running info
 const float PATTERN_DURATION = 4000;
@@ -35,12 +26,6 @@ boolean sentAlready = false;    // State to track if we broadcasted our pattern 
 
 PatternRunner<NUM_LEDS> patternRunner(PATTERN_DURATION);
 
-//Rendering patterns to LEDs info
-enum RenderType {
-	RENDER_NORMAL,
-	RENDER_MIRRORED
-};
-const RenderType RENDER_TYPE = RENDER_NORMAL;
 CRGB render_leds[NUM_LEDS];
 
 char patternCommand[] = {
@@ -49,28 +34,6 @@ char patternCommand[] = {
 	'e', 'd', 'c',
 	'r', 'f', 'v'};
 
-//****************
-// User pattern selection
-// Three methods supported: push button, dip switch, or const
-// Uncomment the define relevant to your hardware
-#define PATTERN_SELECT_PUSHBTN
-// #define PATTERN_SELECT_DIPSWITCH
-//#define PATTERN_SELECT_CONST
-
-#if defined(PATTERN_SELECT_PUSHBTN)
-// PUSH BUTTON Config
-#include "OneButton.h"
-const uint8_t PUSHBUTTON_PIN = 5;
-// Setup a new OneButton on pin A1.
-void onPatternChangeClick();
-OneButton cyclePatternBtn(PUSHBUTTON_PIN, true);
-int chosenPattern = 3;  // Current pattern state
-#elif defined(PATTERN_SELECT_DIPSWITCH)
-// DIP SWITCHES Config
-const int dipswitch_pins[] = {2, 15};
-#elif defined(PATTERN_SELECT_CONST)
-const int USER_PATTERN = 0;
-#endif
 
 //************************************************************
 // this is a simple example that uses the easyMesh library
@@ -84,15 +47,8 @@ const int USER_PATTERN = 0;
 //************************************************************
 #include <painlessMesh.h>
 
-// some gpio pin that is connected to an LED to incicate wifi status. change to the right number of your LED.
-#define STATUS_LED LED_BUILTIN  // GPIO number of connected LED, ON ESP-12 IS GPIO2
-
 #define BLINK_PERIOD 3000   // milliseconds until cycle repeat
 #define BLINK_DURATION 100  // milliseconds LED is on for
-
-#define MESH_SSID "whateverYouLike"
-#define MESH_PASSWORD "somethingSneaky"
-#define MESH_PORT 5555
 
 // Prototypes For painlessMesh
 void sendMessage();
@@ -142,13 +98,12 @@ void setup() {
 		pinMode(dipswitch_pins[i], INPUT_PULLUP);
 	}
 #endif
-	// No setup needed for const
+	// No setup needed for const pattern select
 
 	// TODO: Better user configurable LED setup
 	FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(render_leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-	FastLED.setBrightness(50);
+	FastLED.setBrightness(LED_BRIGHTNESS);
 	FastLED.setMaxPowerInVoltsAndMilliamps(MAX_VOLTS, MAX_MILLIAMPS);
-
 	FastLED.setDither(0);
 
 	patternRunner.setup();

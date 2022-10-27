@@ -1,3 +1,18 @@
+# TinyGang PlatformIO User Documentation
+## Configuring to your hardware
+Open up `UserConfig.h` and read the comments there and configure what pins your leds and switches are connected to as well as the mesh wifi connection information.
+
+## Flashing to your device using PlatformIO
+1. First you must ensure you have the right USB to UART chipset driver installed for your development board. This lets your computer recognize the device in the first place. If you bought the same board as us, the chipset drivers can be found here: https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads
+If you aren't sure / its some random unbranded board from Alibaba, read the chip on your dev board with a magnifying glass. Look for something that says "SILABS CP2102" google that, and if the results say the magic words UART, downlaod drivers for that.
+2. Install Visual Studio Code - https://code.visualstudio.com/
+3. Install the "PlatformIO IDE" extension from within VS Code on the Extensions tab.
+4. Download this repository.
+5. From the PlatformIO home page (alien head icon) open a project, select the "TinyGang_PlatformIO" folder. Note to NOT pick the base repository folder (just plain TinyGang)
+6. Plug your board into your computer USB
+7. Make sure to perform the "Configuring to your hardware" step above!
+8. From the PlatformIO sidebar tab you should now see several options under "Project Tasks". Select the "Upload and Monitor" Task under "upesy_wroom" -- This should connect to your device, upload the firmware, then display a log of the device's execution. If things start flashing and messages start scrolling, you're done!
+
 # TinyGang PlatformIO Code Documentation
 
 ## PlatformIO
@@ -27,7 +42,7 @@ Sometimes this create's an effect where all patterns in the mesh will play out i
 
 Pattern Blending: it does sometimes appear to blend patterns, but it doesn't seem this way in the code. Perhaps it is the case that sometimes patterns "finish" but don't clear their LEDs back to zero/black, and the next pattern does look at the previous color value.
 
-## Improvements
+## Potential Improvements
 
 1. Pattern precidence is always just based on predefined pattern selection and it alwyas overwrites.
     Also the way this is implemented is weird, if there is only one true output buffer then it shouldn't be repeated in code. Just have one consolidated output buffer.
