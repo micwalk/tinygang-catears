@@ -12,7 +12,7 @@ class WhiteTrace : public Pattern {
 		
 		// return CHSV(220, 200, 128); // pink
 		// fade
-		return previous.nscale8(30);
+		return previous.nscale8(190);
 	}
 };
 

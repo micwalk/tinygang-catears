@@ -41,8 +41,6 @@ class PatternRunner {
 
 	unsigned long m_durationMs;
 
-	bool m_somethingRunning = false;
-
    public:
 	// Just making this buffer public to avoid more complicated getters
 	CRGB m_outBuffer[LED_COUNT];
@@ -63,7 +61,7 @@ class PatternRunner {
 
 	// Setter
 	void StartPattern(int patternId) {
-		Serial.printf("%u: Starting pattern: %i\n", millis(), patternId);
+		Serial.printf("%u: PatternRunner: Starting pattern %i\n", millis(), patternId);
 		m_ellapseTimeMs[patternId] = 0;
 	}
 
@@ -76,19 +74,33 @@ class PatternRunner {
 		}
 	}
 
+   private:
+	uint32_t m_lastPatternMask = 0;
+    
+	uint32_t activePatternMask() {
+		uint32_t patternMask = 0;
+		for (int i = 0; i < (PATTERNS_COUNT>32 ? 32 : PATTERNS_COUNT); i++) {
+			if (!PatternActive(i)) continue;
+			patternMask |= (1 << i);
+		}
+		return patternMask;
+	}
+
+   public:
 	// TODO: migrate to .cpp?
 	void updateLedColors() {
 		int activeCt = 0;
 		for (int i = 0; i < PATTERNS_COUNT; i++) {
 			if (!PatternActive(i)) continue;
-            activeCt++;
-            for (int j = 0; j < LED_COUNT; j++) {
-                float position = (float)j / (float)LED_COUNT;
-                float remaining = 1.0 - (float)m_ellapseTimeMs[i] / (float)m_durationMs;
-                // TODO: re-introduce the concept of inboundHue (renamed to legacy_inbound_hue), which isn't sent / changed currently
-                //  This also includes the idea of self color => pattern_hue lookup vs inbound hue for self vs other patterns
-                m_outBuffer[j] = patterns[i]->paintLed(position, remaining, m_outBuffer[j], PATTERN_HUE[i]);
-            }
+			activeCt++;
+            // if(activeCt > 1) continue;
+			for (int j = 0; j < LED_COUNT; j++) {
+				float position = (float)j / (float)LED_COUNT;
+				float remaining = 1.0 - (float)m_ellapseTimeMs[i] / (float)m_durationMs;
+				// TODO: re-introduce the concept of inboundHue (renamed to legacy_inbound_hue), which isn't sent / changed currently
+				//  This also includes the idea of self color => pattern_hue lookup vs inbound hue for self vs other patterns
+				m_outBuffer[j] = patterns[i]->paintLed(position, remaining, m_outBuffer[j], PATTERN_HUE[i]);
+			}
 		}
 
 		// if(PatternActive(3)) {
@@ -99,28 +111,23 @@ class PatternRunner {
 		//     }
 		//     Serial.println("]\n");
 		// }
+		
+        uint32_t activeMask = activePatternMask();
 
-		// if (activeCt > 1) {
-		// 	Serial.printf("%u: MULTI ACTIVE CT:%i Patterns:", millis(), activeCt);
-		// 	for (int i = 0; i < PATTERNS_COUNT; i++) {
-		// 		if (PatternActive(i)) {
-		// 			Serial.printf("%i, ", i);
-		// 		}
-		// 	}
-		// 	Serial.print("\n");
-		// }
-
-		// Newly ended all patterns
-		if (m_somethingRunning && activeCt == 0) {
-			m_somethingRunning = false;
-			for (int j = 0; j < LED_COUNT; j++) {
-				m_outBuffer[j] = m_outBuffer[j].nscale8(10);
-			}
-			Serial.printf("%u: All patterns finished.\n\n\n", millis());
-		} else if (!m_somethingRunning && activeCt > 0) {
-			m_somethingRunning = true;
-			// Serial.printf("%u: Something started.\n", millis());
+		if (activeMask != m_lastPatternMask) {
+			Serial.printf("%u: PatternRunner: %i Active Patterns. PatternMask:%i\n", millis(), activeCt, activeMask);
+            if(activeCt == 0) Serial.print("    *All Patterns Dormant*\n");
 		}
+
+
+        if(activeCt == 0) {
+            //Slowly fade out
+            for (int j = 0; j < LED_COUNT; j++) {
+				m_outBuffer[j] = m_outBuffer[j].nscale8(190);
+			}
+        }
+        
+		m_lastPatternMask = activeMask;
 	}
 };
 
