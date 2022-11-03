@@ -16,7 +16,6 @@
 #include "UserConfig.h"
 
 //Some State
-int myPatternId = 0;
 int legacy_inbound_hue = 229;  // incoming char sets color
 
 //Pattern running info

@@ -37,6 +37,10 @@ const RenderType RENDER_TYPE = RENDER_NORMAL;
 // User pattern selection
 // Three methods supported: push button, dip switch, or const
 
+//Default pattern
+int myPatternId = 0;
+
+
 // Uncomment the define relevant to your hardware
 #define PATTERN_SELECT_PUSHBTN
 // #define PATTERN_SELECT_DIPSWITCH
@@ -51,7 +55,7 @@ const RenderType RENDER_TYPE = RENDER_NORMAL;
     // Setup a new OneButton on pin A1.
     void onPatternChangeClick();
     OneButton cyclePatternBtn(PUSHBUTTON_PIN, true);
-    int chosenPattern = 3;  // Current pattern state
+    int chosenPattern = myPatternId;  // Current pattern state
 
 #elif defined(PATTERN_SELECT_DIPSWITCH)
     
