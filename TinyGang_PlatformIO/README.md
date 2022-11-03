@@ -15,6 +15,34 @@ If you aren't sure / its some random unbranded board from Alibaba, read the chip
 
 ## Hardware List
 
+## Hardware Ref:
+### Boards
+I purchased this set of 3 boards: https://www.amazon.com/dp/B09GK74F7N
+Seems to be right pinout: https://circuits4you.com/2018/12/31/esp32-devkit-esp32-wroom-gpio-pinout/
+
+![Pinout Image](https://circuits4you.com/wp-content/uploads/2018/12/ESP32-Pinout.jpg)
+
+[Pinout Image Repo Link for posterity](../img/ESP32-Pinout.jpg)
+
+
+Also purchased Seeed Studio XIAO ESP32C3: https://www.amazon.com/dp/B0B94JZ2YF
+ -- This thing is TINY
+### Sensors:
+MPU 6050 Accelerometer + Gyroscope: https://www.amazon.com/dp/B00LP25V1A
+
+
+### Michael Pinouts
+Since the above devboard is kinda large for a breadboard, I have it attached with only the left side (as in pinouts, with usb port on bottom) accessible.
+
+The following pins are attached
+* VIN to breadboard + rail
+* GND to breadboard - rail
+* 100uf cap between breadboard +/- rails
+* D12 - to pushbutton then to GND
+* D14 - to 330 ohm resistor then to WS2812b strip
+
+WS2812 is connected to breadboard power rails + d12. Amazingly this also works for powering them off of microusb as well as a breadboard power supply @ 5v
+
 # TinyGang PlatformIO Code Documentation
 
 ## PlatformIO
