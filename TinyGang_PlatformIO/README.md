@@ -61,7 +61,12 @@ The `getChosenPattern` returns the current pattern slection regardless of the ab
 ### PatternRunner
 The class `PatternRunner` keeps track of which patterns are playing. Multiple patterns can be active at a given time. When multiple patterns are active, the highest numbered pattern takes precidence.
 
-Primary pattern state is managed through a varaible `m_ellapseTimeMs[pattern_id]`. This is a measure of how long each animation has been playing.
+The `PatternRunner` maintains a schedule of patterns managed by an array of `ScheduledPattern[]`. Currently it maintains the legacy logic of having as many schedule slots as there are patterns.
+
+A `ScheduledPattern` contains info on the:
+* pattern algorithm to display
+* hue to display
+* start and stop times
 
 This creates 3 implict states
 1. Active -- Currently playing an animation. Recognized when ellapseTimeMs `ellapseTimeMs[i] <= durationMs`. Queryable via `PatternRunner::PatternActive(int patternId)`

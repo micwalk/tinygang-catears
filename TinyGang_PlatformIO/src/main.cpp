@@ -188,7 +188,7 @@ void checkPatternTimer() {
 // Broadcasts current pattern to others on the mesh.
 void broadcastPattern() {
 	// If already sent or not playing yet, then don't broadcast
-	if (sentAlready || patternRunner.PatternElapsed(myPatternId) <= 0) return;
+	if (sentAlready || !patternRunner.PatternActive(myPatternId)) return;
 
 	
 	SerializedPattern currentPattern(myPatternId);
@@ -208,7 +208,7 @@ void receiveMeshMsg(char inChar) {
 		//Keyboard : need to create simplified / legacy pattern
 		//GangMesh -- Need to make PatternRunner.h importable
 		
-	SerializedPattern sPattern {inChar};
+	SerializedPattern sPattern(inChar);
 	
 	//Deserialize pattern index, don't forget to check for error return value
 	int patternIdx = DeserializePattern(sPattern);

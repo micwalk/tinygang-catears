@@ -58,6 +58,11 @@ inline bool PatternRefValid(PatternReference ref) {
 struct SerializedPattern {
 	char commandChar;
     
+	SerializedPattern(char command) {
+		commandChar = command;
+		//TODO: verify valid?
+	}
+	
     SerializedPattern(PatternReference patternIndex = 0) {
         if(PatternRefValid(patternIndex)) {
             //Lookup command in array

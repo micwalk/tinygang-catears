@@ -6,12 +6,14 @@ void GangMesh::setup() {
 	mesh.setDebugMsgTypes(ERROR | DEBUG);  // set before init() so that you can see error messages
 
 	mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
+	//Bind callbacks. Since they are class methods now instead of free functions,
+	// we must bind this to them explicitly using std::bind.
+	//The ones that take arguments must have std::placeholders added for them
 	mesh.onReceive(std::bind(&GangMesh::receivedCallback, this, std::placeholders::_1, std::placeholders::_2));
-
-	// mesh.onNewConnection(std::bind(&GangMesh::newConnectionCallback, this) );
-	// mesh.onChangedConnections(std::bind(&GangMesh::changedConnectionCallback, this) );
-	// mesh.onNodeTimeAdjusted(std::bind(&GangMesh::nodeTimeAdjustedCallback, this) );
-	// mesh.onNodeDelayReceived(std::bind(&GangMesh::delayReceivedCallback, this) );
+	mesh.onNewConnection(std::bind(&GangMesh::newConnectionCallback, this, std::placeholders::_1) );
+	mesh.onChangedConnections(std::bind(&GangMesh::changedConnectionCallback, this) );
+	mesh.onNodeTimeAdjusted(std::bind(&GangMesh::nodeTimeAdjustedCallback, this, std::placeholders::_1) );
+	mesh.onNodeDelayReceived(std::bind(&GangMesh::delayReceivedCallback, this, std::placeholders::_1, std::placeholders::_2) );
 
 	auto nodeId = mesh.getNodeId();
 	Serial.printf("*Initializing mesh. Own NodeId is %u\n*", nodeId);
