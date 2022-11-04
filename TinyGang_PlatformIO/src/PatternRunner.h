@@ -2,24 +2,7 @@
 #define __PATTERNRUNNER__H__
 
 #include <elapsedMillis.h>
-
-#include "patterns/BassShader.h"
-#include "patterns/BodyTwinkler.h"
-#include "patterns/BookendFlip.h"
-#include "patterns/BookendTrace.h"
-#include "patterns/RainbowSparkle.h"
-#include "patterns/Twinkler.h"
-#include "patterns/WhiteTrace.h"
-
-Pattern *patterns[] = {
-	new BodyTwinkler(),    // 0 red yellow sparkle short
-	new BassShader(),      // 1 pattern individually triggered
-	new RainbowSparkle(),  // 2 more pale pink and blue
-	new WhiteTrace(),      // 3
-	new BookendTrace(),    // 4
-	new Twinkler(),        // 5
-	new BookendFlip()      // 6
-};
+#include "PatternSerialization.h"
 
 int PATTERN_HUE[] = {0, 20, 255, 229, 120, 200, 207};
 // 120 should be green, not cyan
@@ -27,50 +10,34 @@ int PATTERN_HUE[] = {0, 20, 255, 229, 120, 200, 207};
 // 22 orange
 // 200 lilac
 // 'a' green
-const size_t PATTERNS_COUNT = (sizeof(patterns)) / 4;
-
 static_assert(
 	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
 	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
 
-
-
-char patternCommand[] = {
-	'q', 'a', 'z',
-	'w', 's', 'x',
-	'e', 'd', 'c',
-	'r', 'f', 'v'};
-const size_t SERIALIZED_PATTERN_COUNT = std::min(PATTERNS_COUNT, sizeof(patternCommand));
-
-struct SerializedPattern {
-	char commandChar;
-    
-    SerializedPattern(uint32_t patternIndex = 0) {
-        if(patternIndex < SERIALIZED_PATTERN_COUNT) {
-            //Lookup command in array
-            commandChar = patternCommand[patternIndex];
-        } else {
-            //Normally would throw, but since exceptions are disabled...
-            //On error just return first
-            commandChar = patternCommand[0];
-        }
-        
-    }
-    
-    String toString() {
-        return String(commandChar);
-    }
+// Each user (gang member) on the mesh gets to pick and broadcast
+// their own custom pattern. This custom pattern is a pattern algorithm (patternRef)
+// plus a pattern color (hue)
+struct UserPattern {
+    PatternReference patternRef;
+    uint8_t hue;
+    //IsActive?
+    //Duration? Remaining Time?
 };
 
-int DeserializePattern(SerializedPattern serializedPattern) {
-	//Search by index into patternCommand
-	for (int i = 0; i < std::min(PATTERNS_COUNT, SERIALIZED_PATTERN_COUNT); i++) {
-		if (serializedPattern.commandChar == patternCommand[i]) {
-			return i;
-		}
+// When keeping track of running patterns, we need to know
+// both the UserPattern info as well as timing information
+// When to start running it, when to stop running it.
+struct ScheduledPattern {
+	UserPattern patternDef;
+    
+	unsigned long startMs;
+	unsigned long endMs;
+	
+	bool IsActive() {
+		auto now = millis();
+		return now >= startMs && now < endMs;
 	}
-	return -1;
-}
+};
 
 template <unsigned int LED_COUNT>
 class PatternRunner {
