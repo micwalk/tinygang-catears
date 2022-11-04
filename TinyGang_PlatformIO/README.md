@@ -13,9 +13,7 @@ If you aren't sure / its some random unbranded board from Alibaba, read the chip
 7. Make sure to perform the "Configuring to your hardware" step above!
 8. From the PlatformIO sidebar tab you should now see several options under "Project Tasks". Select the "Upload and Monitor" Task under "upesy_wroom" -- This should connect to your device, upload the firmware, then display a log of the device's execution. If things start flashing and messages start scrolling, you're done!
 
-## Hardware List
-
-## Hardware Ref:
+## Hardware Ref
 ### Boards
 I purchased this set of 3 boards: https://www.amazon.com/dp/B09GK74F7N
 Seems to be right pinout: https://circuits4you.com/2018/12/31/esp32-devkit-esp32-wroom-gpio-pinout/

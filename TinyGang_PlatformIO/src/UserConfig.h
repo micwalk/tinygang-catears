@@ -38,7 +38,7 @@ const RenderType RENDER_TYPE = RENDER_NORMAL;
 // Three methods supported: push button, dip switch, or const
 
 //Default pattern
-int myPatternId = 0;
+const int DEFAULT_PATTERN = 0;
 
 
 // Uncomment the define relevant to your hardware
@@ -48,25 +48,16 @@ int myPatternId = 0;
 
 //Now define constants / pins relative to you selection above.
 #if defined(PATTERN_SELECT_PUSHBTN)
-
     // PUSH BUTTON Config
     #include "OneButton.h"
     const uint8_t PUSHBUTTON_PIN = 12;
-    // Setup a new OneButton on pin A1.
     void onPatternChangeClick();
-    OneButton cyclePatternBtn(PUSHBUTTON_PIN, true);
-    int chosenPattern = myPatternId;  // Current pattern state
-
 #elif defined(PATTERN_SELECT_DIPSWITCH)
-    
     // DIP SWITCHES Config
     const int dipswitch_pins[] = {2, 15};
-
 #elif defined(PATTERN_SELECT_CONST)
-
     // No switch? no problem! Just set your constant pattern here:
     const int USER_PATTERN = 0;
-
 #endif
 
 //***********************************************************
