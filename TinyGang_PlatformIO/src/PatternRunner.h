@@ -5,11 +5,11 @@
 
 #include "patterns/BassShader.h"
 #include "patterns/BodyTwinkler.h"
+#include "patterns/BookendFlip.h"
 #include "patterns/BookendTrace.h"
 #include "patterns/RainbowSparkle.h"
 #include "patterns/Twinkler.h"
 #include "patterns/WhiteTrace.h"
-#include "patterns/BookendFlip.h"
 
 Pattern *patterns[] = {
 	new BodyTwinkler(),    // 0 red yellow sparkle short
@@ -20,6 +20,7 @@ Pattern *patterns[] = {
 	new Twinkler(),        // 5
 	new BookendFlip()      // 6
 };
+
 int PATTERN_HUE[] = {0, 20, 255, 229, 120, 200, 207};
 // 120 should be green, not cyan
 // 229 pink
@@ -31,6 +32,45 @@ const size_t PATTERNS_COUNT = (sizeof(patterns)) / 4;
 static_assert(
 	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
 	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
+
+
+
+char patternCommand[] = {
+	'q', 'a', 'z',
+	'w', 's', 'x',
+	'e', 'd', 'c',
+	'r', 'f', 'v'};
+const size_t SERIALIZED_PATTERN_COUNT = std::min(PATTERNS_COUNT, sizeof(patternCommand));
+
+struct SerializedPattern {
+	char commandChar;
+    
+    SerializedPattern(uint32_t patternIndex = 0) {
+        if(patternIndex < SERIALIZED_PATTERN_COUNT) {
+            //Lookup command in array
+            commandChar = patternCommand[patternIndex];
+        } else {
+            //Normally would throw, but since exceptions are disabled...
+            //On error just return first
+            commandChar = patternCommand[0];
+        }
+        
+    }
+    
+    String toString() {
+        return String(commandChar);
+    }
+};
+
+int DeserializePattern(SerializedPattern serializedPattern) {
+	//Search by index into patternCommand
+	for (int i = 0; i < std::min(PATTERNS_COUNT, SERIALIZED_PATTERN_COUNT); i++) {
+		if (serializedPattern.commandChar == patternCommand[i]) {
+			return i;
+		}
+	}
+	return -1;
+}
 
 template <unsigned int LED_COUNT>
 class PatternRunner {
@@ -75,10 +115,10 @@ class PatternRunner {
 
    private:
 	uint32_t m_lastPatternMask = 0;
-    
+
 	uint32_t activePatternMask() {
 		uint32_t patternMask = 0;
-		for (int i = 0; i < (PATTERNS_COUNT>32 ? 32 : PATTERNS_COUNT); i++) {
+		for (int i = 0; i < (PATTERNS_COUNT > 32 ? 32 : PATTERNS_COUNT); i++) {
 			if (!PatternActive(i)) continue;
 			patternMask |= (1 << i);
 		}
@@ -92,7 +132,7 @@ class PatternRunner {
 		for (int i = 0; i < PATTERNS_COUNT; i++) {
 			if (!PatternActive(i)) continue;
 			activeCt++;
-            // if(activeCt > 1) continue;
+			// if(activeCt > 1) continue;
 			for (int j = 0; j < LED_COUNT; j++) {
 				float position = (float)j / (float)LED_COUNT;
 				float remaining = 1.0 - (float)m_ellapseTimeMs[i] / (float)m_durationMs;
@@ -110,22 +150,21 @@ class PatternRunner {
 		//     }
 		//     Serial.println("]\n");
 		// }
-		
-        uint32_t activeMask = activePatternMask();
+
+		uint32_t activeMask = activePatternMask();
 
 		if (activeMask != m_lastPatternMask) {
 			Serial.printf("%u: PatternRunner: %i Active Patterns. PatternMask:%i\n", millis(), activeCt, activeMask);
-            if(activeCt == 0) Serial.print("    *All Patterns Dormant*\n");
+			if (activeCt == 0) Serial.print("    *All Patterns Dormant*\n");
 		}
 
-
-        if(activeCt == 0) {
-            //Slowly fade out
-            for (int j = 0; j < LED_COUNT; j++) {
+		if (activeCt == 0) {
+			// Slowly fade out
+			for (int j = 0; j < LED_COUNT; j++) {
 				m_outBuffer[j] = m_outBuffer[j].nscale8(190);
 			}
-        }
-        
+		}
+
 		m_lastPatternMask = activeMask;
 	}
 };

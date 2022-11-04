@@ -39,11 +39,6 @@ PatternRunner<NUM_LEDS> patternRunner(PATTERN_DURATION);
 CRGB render_leds[NUM_LEDS];
 
 //Pattern Broadcasting
-char patternCommand[] = {
-	'q', 'a', 'z',
-	'w', 's', 'x',
-	'e', 'd', 'c',
-	'r', 'f', 'v'};
 void broadcastPattern();
 boolean sentAlready = false;    // State to track if we broadcasted our pattern yet
 
@@ -195,40 +190,39 @@ void broadcastPattern() {
 	// If already sent or not playing yet, then don't broadcast
 	if (sentAlready || patternRunner.PatternElapsed(myPatternId) <= 0) return;
 
+	
+	SerializedPattern currentPattern(myPatternId);
+	String msg = currentPattern.toString();
+	
 	// send message to other jacket
-	Serial.printf("%u: SENDING::", millis());
-	Serial.print(" my-pattern-id:");
-	Serial.print(myPatternId);
-	// Serial1.print((char)PATTERN_HUE[myPatternId]); // sending color to IMU jackets
-	Serial.print(" cmd:");
-	Serial.println(patternCommand[myPatternId]);
-	// Serial1.print(patternCommand[myPatternId]);
-
-	String msg = (String)patternCommand[myPatternId];
-	// TODO: enhance message to include time remaining?
+	Serial.printf("%u: SENDING:: my-pattern-id: %i. Msg: %s\n", millis(), myPatternId, msg);
+	// TODO: Also send hue!
+	// TODO: enhance message to include time remaining? -- However this usually sends with maximum time remaining
 	gangMesh.sendBroadcast(msg);
 	sentAlready = true;
 }
 
 void receiveMeshMsg(char inChar) {
-	bool patternFound = false;
-
-	// read the incoming character and check it's index,
-	// start the corresponding pattern ID by setting its timer to 0
-	for (int i = 0; i < std::min(PATTERNS_COUNT, sizeof(patternCommand)); i++) {
-		if (inChar == patternCommand[i]) {
-			patternFound = true;
-			Serial.printf("%u: Message: %c. Corresponds to pattern %i. Resetting that pattern. PatternCount: %u\n",
-			              millis(), inChar, i, PATTERNS_COUNT);
-			patternRunner.StartPattern(i);
-		}
-	}
-
-	// if incoming characters do not correspond to pattern ID
-	// then the other device must be running wire protocol v1.
-	// Therefore set set inbound pattern color
-	if (!patternFound) {
-		Serial.printf("%u: Message: %c. Activating legacy handling to set inbound hue\n",
+	//TODO: change input message to type char.
+		//2 callers: one from keybaord, one from GangMesh
+		//Keyboard : need to create simplified / legacy pattern
+		//GangMesh -- Need to make PatternRunner.h importable
+		
+	SerializedPattern sPattern {inChar};
+	
+	//Deserialize pattern index, don't forget to check for error return value
+	int patternIdx = DeserializePattern(sPattern);
+	
+	if(patternIdx >= 0) {
+		//We have a valid pattern, start the corresponding pattern
+		Serial.printf("%u: Message: %c. Corresponds to pattern %i. Resetting that pattern. PatternCount: %u\n",
+			              millis(), inChar, patternIdx, PATTERNS_COUNT);
+		patternRunner.StartPattern(patternIdx);
+	} else {
+		// if incoming characters do not correspond to pattern ID
+		// then the other device must be running wire protocol v1.
+		// Therefore set set inbound pattern color
+		Serial.printf("%u: Message: %c. PatternChar out of bounds. Activating legacy handling to set inbound hue\n",
 			              millis(), inChar);
 		legacy_inbound_hue = inChar;
 	}
