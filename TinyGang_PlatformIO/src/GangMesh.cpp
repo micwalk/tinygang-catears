@@ -52,22 +52,18 @@ void GangMesh::receivedCallback(uint32_t from, String &msg) {
 		return;
 	}
 	
-	//Lookup/add/update node data.
-	auto foundIter = std::find(m_allNodeList.begin(), m_allNodeList.end(), from);
-	if(foundIter == m_allNodeList.end()) {
+	int fromIdx = m_nodeData.find(from);
+	if(fromIdx < 0) {
 		Serial.printf("%u: Haven't seen node %u before. Adding to list.\n", millis(), from);
-		m_allNodeList.push_back(from);
-		m_allNodeData.push_back(deserializedData);
+		m_nodeData[from] = deserializedData;
 	} else {
-		int dataIndex = std::distance(m_allNodeList.begin(), foundIter);
-		
-		//OMG this doesn't work because simple list is a linked list.
-		//TODO: switch to ustl...
-		//SharedNodeData& oldNodeData = m_allNodeData[dataIndex];
-		
 		// m_allNodeData[dataIndex] = deserializedData;
 		Serial.printf("%u: Have seen seen node %u before. It is at position %i/%u\n", millis(), from, 
-			dataIndex, m_allNodeData.size());
+			fromIdx, m_nodeData.length());
+		auto& oldData = m_nodeData.values[fromIdx];
+		Serial.printf("   Old Data Pattern: %i", oldData.nodePattern);
+		m_nodeData.values[fromIdx] = deserializedData;
+		Serial.printf("   New Data Pattern: %i\n", m_nodeData.values[fromIdx].nodePattern);		
 	}
 	
 	receiveMeshMsg(from, deserializedData);

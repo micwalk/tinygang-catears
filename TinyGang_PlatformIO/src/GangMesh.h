@@ -1,8 +1,12 @@
 #ifndef __MESHSTUFF__H__
 #define __MESHSTUFF__H__
 
-#include "UserConfig.h"
 #include "PatternSerialization.h"
+#include "UserConfig.h"
+
+//Must define platform first:
+#define __ESP32__
+#include "ustd_map.h"
 
 // TODO: Make this a proper header that be included in multiple cpp files without
 // the compiler freaking out
@@ -27,24 +31,25 @@
 // Declared but not defined here.
 void receiveMeshMsg(uint32_t nodeName, SharedNodeData nodeData);
 
+const int MAX_PEERS = 100;
+
 class GangMesh {
    public:
 	painlessMesh mesh;
 	Scheduler userScheduler;  // to control your personal task
 	SimpleList<uint32_t> m_currentNodeList;
-	
-	SimpleList<uint32_t> m_allNodeList;
-	SimpleList<SharedNodeData> m_allNodeData;
 
-	const SimpleList<uint32_t>& getNodeList() const{
+	ustd::map<uint32_t, SharedNodeData> m_nodeData;
+
+	const SimpleList<uint32_t>& getNodeList() const {
 		return m_currentNodeList;
 	}
-	
+
 	// Number of nodes in mesh, including self.
 	std::size_t getNodeCount() const {
 		return m_currentNodeList.size() + 1;
 	}
-	
+
    private:
 	// Task Config:
 	// Task to periodically calculate delay
@@ -58,7 +63,8 @@ class GangMesh {
 
    public:
 	GangMesh() : taskCalculateDelay(TASK_SECOND * 1, TASK_FOREVER,
-	                                std::bind(&GangMesh::sendDelayMessage, this)) {
+	                                std::bind(&GangMesh::sendDelayMessage, this)),
+				 m_nodeData(2, MAX_PEERS, 2, false) {
 		// Nothing to do here
 	}
 
@@ -72,7 +78,7 @@ class GangMesh {
 		mesh.sendBroadcast(message);
 	}
 
-	void receivedCallback(uint32_t from, String &msg);
+	void receivedCallback(uint32_t from, String& msg);
 	void newConnectionCallback(uint32_t nodeId);
 	void changedConnectionCallback();
 	void nodeTimeAdjustedCallback(int32_t offset);
