@@ -2,6 +2,7 @@
 #define __MESHSTUFF__H__
 
 #include "UserConfig.h"
+#include "PatternSerialization.h"
 
 // TODO: Make this a proper header that be included in multiple cpp files without
 // the compiler freaking out
@@ -24,14 +25,26 @@
 // Prototypes For painlessMesh
 
 // Declared but not defined here.
-void receiveMeshMsg(char inChar);
+void receiveMeshMsg(uint32_t nodeName, SharedNodeData nodeData);
 
 class GangMesh {
    public:
 	painlessMesh mesh;
 	Scheduler userScheduler;  // to control your personal task
-	SimpleList<uint32_t> nodes;
+	SimpleList<uint32_t> m_currentNodeList;
+	
+	SimpleList<uint32_t> m_allNodeList;
+	SimpleList<SharedNodeData> m_allNodeData;
 
+	const SimpleList<uint32_t>& getNodeList() const{
+		return m_currentNodeList;
+	}
+	
+	// Number of nodes in mesh, including self.
+	std::size_t getNodeCount() const {
+		return m_currentNodeList.size() + 1;
+	}
+	
    private:
 	// Task Config:
 	// Task to periodically calculate delay

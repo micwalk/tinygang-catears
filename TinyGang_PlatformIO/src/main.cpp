@@ -5,47 +5,44 @@
 */
 
 #include <Arduino.h>
-//Note: for these two, must include FastLED and elapsedMillis libraries in your Audrino IDE/platformIO
+// Note: for these two, must include FastLED and elapsedMillis libraries in your Audrino IDE/platformIO
 #include <FastLED.h>
 #include <elapsedMillis.h>
 
-#include "PatternRunner.h"
 #include "GangMesh.h"
+#include "PatternRunner.h"
 
 // *** LOOKING TO CHANGE WHAT PIN YOU HAVE ATTACHED? ***
 // *** SEE UserConfig.h ***
 #include "UserConfig.h"
 
-//Some State
+// Some State
 int legacy_inbound_hue = 229;  // incoming char sets color
 
-//Pattern Choosing
+// Pattern Choosing
 int myPatternId = DEFAULT_PATTERN;
 
 #if defined(PATTERN_SELECT_PUSHBTN)
-	//Pushbutton state
-    // Setup a new OneButton on pin A1.
-    OneButton cyclePatternBtn(PUSHBUTTON_PIN, true);
-    int chosenPattern = myPatternId;  // Current pattern state
+// Pushbutton state
+//  Setup a new OneButton on pin A1.
+OneButton cyclePatternBtn(PUSHBUTTON_PIN, true);
+int chosenPattern = myPatternId;  // Current pattern state
 #endif
 
-
-//Pattern running info
+// Pattern running info
 const float PATTERN_DURATION = 4000;
 float repeatDurationMs = 8000;  // Will display an animation every this often.
 PatternRunner<NUM_LEDS> patternRunner(PATTERN_DURATION);
 
-//Pattern display
+// Pattern display
 CRGB render_leds[NUM_LEDS];
 
-//Pattern Broadcasting
+// Pattern Broadcasting
 void broadcastPattern();
-boolean sentAlready = false;    // State to track if we broadcasted our pattern yet
-
-//Pattern receiving
-void receiveMeshMsg(char inChar);
+boolean sentAlready = false;  // State to track if we broadcasted our pattern yet
 
 // More Declarations
+void receiveKeyboardMsg(char inChar);
 void checkPatternTimer();
 int getChosenPattern();
 void show();
@@ -92,17 +89,17 @@ void loop() {
 	// for reading from the serial port.
 	// This is data that's already arrived and stored in the
 	// serial receive buffer (which holds 64 bytes).
-   
+
 	// This can be used to force sending a message from the keyboard while debugging.
 	while (Serial.available()) {
 		char inChar = (char)Serial.read();
 		Serial.println("Got msg from serial read.");
-		receiveMeshMsg(inChar);
+		receiveKeyboardMsg(inChar);
 	}
 
 	checkPatternTimer();
 	broadcastPattern();
-	patternRunner.updateLedColors(); //TODO: send legacy_inbound_hue again?
+	patternRunner.updateLedColors();  // TODO: send legacy_inbound_hue again?
 	show();
 	delay(10);
 
@@ -175,25 +172,41 @@ void checkPatternTimer() {
 		// TODO: Create startPattern / pattern renderer class and pattern selector class.
 	}
 
+	unsigned long myMicros = micros();
+	uint32_t meshMicros = gangMesh.mesh.getNodeTime();
+	int meshDiff = meshMicros - myMicros;
+
 	// Automatically start own pattern every repeatDuration
 	if (patternRunner.PatternElapsed(myPatternId) > repeatDurationMs) {
-		Serial.printf("%u: repeatDurationMs has elapsed, restarting self pattern: %i\n", millis(), myPatternId);
+		Serial.printf("%u: Pattern Scheduler: MyMicros: %u MeshMicros: %u (diff: %i) repeatDurationMs has elapsed, restarting self pattern: %i\n",
+		              millis(), myMicros, meshMicros, meshDiff, myPatternId);
+
+		uint32_t repeatMicros = repeatDurationMs * 1000;
+		uint32_t intervalPortion = meshMicros % repeatMicros;
+		uint32_t nextTime = meshMicros + (repeatMicros - intervalPortion);
+
+		Serial.printf("%u: Pattern Scheduler: Currently %u into pattern repeat. Next round time: %u\n",
+		              millis(), intervalPortion, nextTime);
+					  
+		auto& nodes = gangMesh.getNodeList();
+		Serial.printf("%u: Pattern Scheduler: there are %u nodes on mesh right now.\n",
+		              millis(), nodes.size()+1);
+					  
+		
 		patternRunner.StartPattern(myPatternId);
 		sentAlready = false;
 	}
 	return;
 }
 
-
 // Broadcasts current pattern to others on the mesh.
 void broadcastPattern() {
 	// If already sent or not playing yet, then don't broadcast
 	if (sentAlready || !patternRunner.PatternActive(myPatternId)) return;
 
-	
-	SerializedPattern currentPattern(myPatternId);
+	SerializedNodeData currentPattern(myPatternId);
 	String msg = currentPattern.toString();
-	
+
 	// send message to other jacket
 	Serial.printf("%u: SENDING:: my-pattern-id: %i. Msg: %s\n", millis(), myPatternId, msg);
 	// TODO: Also send hue!
@@ -202,28 +215,52 @@ void broadcastPattern() {
 	sentAlready = true;
 }
 
-void receiveMeshMsg(char inChar) {
-	//TODO: change input message to type char.
-		//2 callers: one from keybaord, one from GangMesh
-		//Keyboard : need to create simplified / legacy pattern
-		//GangMesh -- Need to make PatternRunner.h importable
-		
-	SerializedPattern sPattern(inChar);
-	
-	//Deserialize pattern index, don't forget to check for error return value
-	int patternIdx = DeserializePattern(sPattern);
-	
-	if(patternIdx >= 0) {
-		//We have a valid pattern, start the corresponding pattern
+void receiveKeyboardMsg(char inChar) {
+	// TODO: change input message to type char.
+	// 2 callers: one from keybaord, one from GangMesh
+	// Keyboard : need to create simplified / legacy pattern
+	// GangMesh -- Need to make PatternRunner.h importable
+
+	SerializedNodeData sPattern(inChar);
+
+	// Deserialize pattern index, don't forget to check for error return value
+	int patternIdx = DeserializeNodeData(sPattern).nodePattern;
+
+	if (patternIdx >= 0) {
+		// We have a valid pattern, start the corresponding pattern
 		Serial.printf("%u: Message: %c. Corresponds to pattern %i. Resetting that pattern. PatternCount: %u\n",
-			              millis(), inChar, patternIdx, PATTERNS_COUNT);
+		              millis(), inChar, patternIdx, PATTERNS_COUNT);
 		patternRunner.StartPattern(patternIdx);
 	} else {
 		// if incoming characters do not correspond to pattern ID
 		// then the other device must be running wire protocol v1.
 		// Therefore set set inbound pattern color
 		Serial.printf("%u: Message: %c. PatternChar out of bounds. Activating legacy handling to set inbound hue\n",
-			              millis(), inChar);
+		              millis(), inChar);
 		legacy_inbound_hue = inChar;
+	}
+}
+
+void receiveMeshMsg(uint32_t nodeName, SharedNodeData nodeData){
+	
+	int patternIdx = nodeData.nodePattern;
+
+	if (patternIdx >= 0) {
+		// We have a valid pattern, start the corresponding pattern
+		Serial.printf("%u: Node data for node %u deserialized to pattern %i. Starting that pattern.\n",
+		              millis(), nodeName, patternIdx);
+		patternRunner.StartPattern(patternIdx);
+	} else {
+		//Note: this fn should not get called
+		Serial.printf("%u: Node data for node %u deserialized to invalid pattern.\n", millis(), nodeName);
+		
+
+		// if incoming characters do not correspond to pattern ID
+		// then the other device must be running wire protocol v1.
+		// Therefore set set inbound pattern color
+					  
+		// Serial.printf("%u: Message: %c. PatternChar out of bounds. Activating legacy handling to set inbound hue\n",
+		//               millis(), inChar);
+		// legacy_inbound_hue = inChar;
 	}
 }

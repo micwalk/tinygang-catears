@@ -2,6 +2,8 @@
 #ifndef H_PATTERN
 #define H_PATTERN
 
+#include <FastLED.h>
+
 class Pattern {
    public:
 	/// @brief Calculates the new CRGB color value for a LED according to a pattern.
