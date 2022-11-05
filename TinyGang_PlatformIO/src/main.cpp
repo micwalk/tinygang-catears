@@ -166,36 +166,22 @@ void checkPatternTimer() {
 
 	bool patternChanged = oldPatternId != myPatternId;
 
-	if (patternChanged) {
-		Serial.printf("Pattern switch detected from %i to %i\n", oldPatternId, myPatternId);
-		// Might want to do something special??
-		// TODO: Create startPattern / pattern renderer class and pattern selector class.
-	}
-
-	unsigned long myMicros = micros();
-	uint32_t meshMicros = gangMesh.mesh.getNodeTime();
-	int meshDiff = meshMicros - myMicros;
-
-	// Automatically start own pattern every repeatDuration
+		// Automatically start own pattern every repeatDuration
 	if (patternRunner.PatternElapsed(myPatternId) > repeatDurationMs) {
-		Serial.printf("%u: Pattern Scheduler: MyMicros: %u MeshMicros: %u (diff: %i) repeatDurationMs has elapsed, restarting self pattern: %i\n",
-		              millis(), myMicros, meshMicros, meshDiff, myPatternId);
-
-		uint32_t repeatMicros = repeatDurationMs * 1000;
-		uint32_t intervalPortion = meshMicros % repeatMicros;
-		uint32_t nextTime = meshMicros + (repeatMicros - intervalPortion);
-
-		Serial.printf("%u: Pattern Scheduler: Currently %u into pattern repeat. Next round time: %u\n",
-		              millis(), intervalPortion, nextTime);
-					  
-		auto& nodes = gangMesh.getNodeList();
-		Serial.printf("%u: Pattern Scheduler: there are %u nodes on mesh right now.\n",
-		              millis(), nodes.size()+1);
-					  
+		Serial.printf("%u: Legacy Pattern Scheduler: repeatDurationMs has elapsed, restarting self pattern: %i\n",
+		              millis(),  myPatternId);
 		
 		patternRunner.StartPattern(myPatternId);
 		sentAlready = false;
 	}
+	
+	if (patternChanged) {
+		Serial.printf("Own pattern switch detected from %i to %i\n", oldPatternId, myPatternId);
+		// Might want to do something special??
+		// TODO: Create startPattern / pattern renderer class and pattern selector class.
+		rescheduleLightsCallbackMain();
+	}
+	
 	return;
 }
 
@@ -263,4 +249,50 @@ void receiveMeshMsg(uint32_t nodeName, SharedNodeData nodeData){
 		//               millis(), inChar);
 		// legacy_inbound_hue = inChar;
 	}
+}
+
+void rescheduleLightsCallbackMain() {
+	auto& allNodes = gangMesh.getNodeList();
+	auto nodeCount = allNodes.size();
+	
+	Serial.printf("%u: *Pattern Scheduler* Triggered reschedule with %u nodes\n", millis(), nodeCount);
+	
+	unsigned long myMicros = micros();
+	uint32_t meshMicros = gangMesh.mesh.getNodeTime();
+	int meshDiff = meshMicros - myMicros;
+
+	Serial.printf("%u: Pattern Scheduler: MyMicros: %u MeshMicros: %u (diff: %i)\n",
+					millis(), myMicros, meshMicros, meshDiff);
+
+	
+	uint32_t durationMicros = PATTERN_DURATION * 1000;
+	
+	uint32_t totalMicros = durationMicros * nodeCount;
+	
+	uint32_t intervalPortion = meshMicros % totalMicros;
+	uint32_t nextTime = meshMicros + (totalMicros - intervalPortion);
+
+	Serial.printf("%u: Pattern Scheduler: Currently %u into pattern repeat. Next round time: %u\n",
+					millis(), intervalPortion, nextTime);
+					
+	size_t nodeIdx = 0;
+	for (auto& nodeId : allNodes) {
+		uint32_t nodeStartTime = nextTime + durationMicros * nodeIdx;
+		
+		SharedNodeData nodeData;
+		if(gangMesh.mesh.getNodeId() == nodeId){
+			//Self, re-generate own pattern
+			nodeData = SharedNodeData(getChosenPattern());
+		} else {
+			//Other, lookup
+			nodeData = gangMesh.m_nodeData[nodeId];
+		}
+		 
+		Serial.printf("%u: Pattern Scheduler: Should start node %u's pattern %i at mesh time %u\n",
+					millis(), nodeId, nodeData.nodePattern, nodeStartTime);
+		//TODO: actually trigger pattern!
+		nodeIdx++;
+	}
+	
+	sentAlready = false;	
 }

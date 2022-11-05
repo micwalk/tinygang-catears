@@ -48,6 +48,11 @@ inline bool PatternRefValid(PatternReference ref) {
 struct SharedNodeData {
 	PatternReference nodePattern;
 	// todo: add hue
+	
+	
+	SharedNodeData(PatternReference pattern = 0) {
+		nodePattern = pattern;
+	}
 
 	bool isValid() {
 		return PatternRefValid(nodePattern);

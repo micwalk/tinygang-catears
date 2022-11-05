@@ -29,7 +29,10 @@
 // Prototypes For painlessMesh
 
 // Declared but not defined here.
+// Sorta like statically defined callbacks
 void receiveMeshMsg(uint32_t nodeName, SharedNodeData nodeData);
+void rescheduleLightsCallbackMain();
+
 
 const int MAX_PEERS = 100;
 
@@ -47,7 +50,7 @@ class GangMesh {
 
 	// Number of nodes in mesh, including self.
 	std::size_t getNodeCount() const {
-		return m_currentNodeList.size() + 1;
+		return m_currentNodeList.size();
 	}
 
    private:

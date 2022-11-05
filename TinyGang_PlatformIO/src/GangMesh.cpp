@@ -60,10 +60,14 @@ void GangMesh::receivedCallback(uint32_t from, String &msg) {
 		// m_allNodeData[dataIndex] = deserializedData;
 		Serial.printf("%u: Have seen seen node %u before. It is at position %i/%u\n", millis(), from, 
 			fromIdx, m_nodeData.length());
-		auto& oldData = m_nodeData.values[fromIdx];
+		auto oldData = m_nodeData.values[fromIdx];
 		Serial.printf("   Old Data Pattern: %i", oldData.nodePattern);
 		m_nodeData.values[fromIdx] = deserializedData;
 		Serial.printf("   New Data Pattern: %i\n", m_nodeData.values[fromIdx].nodePattern);		
+		
+		if(oldData.nodePattern != deserializedData.nodePattern){
+			rescheduleLightsCallbackMain();
+		}
 	}
 	
 	receiveMeshMsg(from, deserializedData);
@@ -92,9 +96,9 @@ void GangMesh::changedConnectionCallback() {
 	resetBlinkTask();
 
 	//Re-linearalize node list
-	m_currentNodeList = mesh.getNodeList();
-	// m_currentNodeList.sort(); //Need to add self to this!
-		
+	m_currentNodeList = mesh.getNodeList(true);
+	m_currentNodeList.sort();
+	
 	Serial.printf("Num nodes: %d\n", m_currentNodeList.size());
 	Serial.printf("Connection list:");
 
@@ -106,6 +110,7 @@ void GangMesh::changedConnectionCallback() {
 	Serial.println();
 	calc_delay = true;
 	
+	rescheduleLightsCallbackMain();
 }
 
 
@@ -140,4 +145,5 @@ void GangMesh::delayReceivedCallback(uint32_t from, int32_t delay) {
 // TODO: re-schedule lights when this happens!
 void GangMesh::nodeTimeAdjustedCallback(int32_t offset) {
 	Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
+	rescheduleLightsCallbackMain();
 }
