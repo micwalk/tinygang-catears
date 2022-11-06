@@ -3,6 +3,12 @@
 #include <Arduino.h>
 
 //***********************************************************
+// Board Config
+
+//Must define platform in order for the ustd library to work.
+#define __ESP32__
+
+//***********************************************************
 // LED CONFIG
 
 // What pin is your LED strip attached to?
@@ -68,6 +74,9 @@ const int DEFAULT_PATTERN = 0;
 #define MESH_SSID "whateverYouLike"
 #define MESH_PASSWORD "somethingSneaky"
 #define MESH_PORT 5555
+
+//Unfortunately we have to set a limit because we're statically allocating memory for everyone.
+const int MAX_PEERS = 100;
 
 
 #endif  //!__USERCONFIG__H__

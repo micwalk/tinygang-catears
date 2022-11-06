@@ -1,11 +1,12 @@
 #include "GangMesh.h"
 
 void GangMesh::setup() {
+	Serial.println("******GangMesh Setup******");
+	
 	pinMode(STATUS_LED, OUTPUT);
-
 	mesh.setDebugMsgTypes(ERROR | DEBUG);  // set before init() so that you can see error messages
-
 	mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
+	
 	//Bind callbacks. Since they are class methods now instead of free functions,
 	// we must bind this to them explicitly using std::bind.
 	//The ones that take arguments must have std::placeholders added for them
@@ -15,12 +16,13 @@ void GangMesh::setup() {
 	mesh.onNodeTimeAdjusted(std::bind(&GangMesh::nodeTimeAdjustedCallback, this, std::placeholders::_1) );
 	mesh.onNodeDelayReceived(std::bind(&GangMesh::delayReceivedCallback, this, std::placeholders::_1, std::placeholders::_2) );
 
+
 	auto nodeId = mesh.getNodeId();
-	Serial.printf("*Initializing mesh. Own NodeId is %u\n*", nodeId);
+	Serial.printf("  Own NodeId is %u\n", nodeId);
+	changedConnectionCallback();
 
 	userScheduler.addTask(taskCalculateDelay);
 	taskCalculateDelay.enable();
-
 	blinkNoNodes.set(BLINK_PERIOD, getNodeCount() * 2, [this]() {
         // If on, switch off, else switch on
         this->meshStatusLightOn = !this->meshStatusLightOn;
@@ -39,6 +41,7 @@ void GangMesh::setup() {
 	blinkNoNodes.enable();
 
 	randomSeed(analogRead(A0));
+	Serial.println("\n******GangMesh Setup finish******");
 }
 
 void GangMesh::receivedCallback(uint32_t from, String &msg) {
@@ -144,6 +147,9 @@ void GangMesh::delayReceivedCallback(uint32_t from, int32_t delay) {
 // Whenever we update the mesh time.
 // TODO: re-schedule lights when this happens!
 void GangMesh::nodeTimeAdjustedCallback(int32_t offset) {
-	Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
+	m_meshTimeOffset = mesh.getNodeTime() - micros();
+	
+	Serial.printf("Adjusted time %u. Offset = %d. MyOffset: %u\n", mesh.getNodeTime(), offset, m_meshTimeOffset);
+	
 	rescheduleLightsCallbackMain();
 }

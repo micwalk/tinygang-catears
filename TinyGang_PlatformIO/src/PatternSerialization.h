@@ -37,6 +37,17 @@ constexpr char PATTERN_COMMANDS[] = {
 	'r', 'f', 'v'};
 const size_t SERIALIZED_PATTERN_COUNT = std::min(PATTERNS_COUNT, sizeof(PATTERN_COMMANDS));
 
+//Static hue, to be replaced by network comms
+constexpr int PATTERN_HUE[] = {0, 20, 255, 229, 120, 200, 207};
+// 120 should be green, not cyan
+// 229 pink
+// 22 orange
+// 200 lilac
+// 'a' green
+static_assert(
+	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
+	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
+
 // Intentionally using signed int so we can use negative as invalid flag;
 using PatternReference = int;
 const PatternReference INVALID_PATTERN_REF = -1;
@@ -44,18 +55,31 @@ inline bool PatternRefValid(PatternReference ref) {
 	return ref >= 0 && ref < SERIALIZED_PATTERN_COUNT;
 }
 
+// Each user (gang member) on the mesh gets to pick and broadcast
+// their own custom pattern. This custom pattern is a pattern algorithm (patternRef)
+// plus a pattern color (hue)
 // This data will be broadcast and synchronized across the mesh
 struct SharedNodeData {
 	PatternReference nodePattern;
+	uint8_t hue;
 	// todo: add hue
 	
 	
 	SharedNodeData(PatternReference pattern = 0) {
 		nodePattern = pattern;
+		resetDefaultHue();
 	}
 
 	bool isValid() {
 		return PatternRefValid(nodePattern);
+	}
+	
+	void resetDefaultHue() {
+		if(isValid()){
+			hue = PATTERN_HUE[nodePattern];	
+		} else {
+			hue = 0;
+		}
 	}
 };
 
@@ -104,6 +128,8 @@ inline PatternReference DeserializePatternRef(char commandChar) {
 inline SharedNodeData DeserializeNodeData(SerializedNodeData serializedData) {
 	SharedNodeData nodeData;
 	nodeData.nodePattern = DeserializePatternRef(serializedData.commandChar);
+	//TODO: read hue
+	nodeData.resetDefaultHue();
 	return nodeData;
 }
 

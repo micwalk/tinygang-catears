@@ -5,31 +5,11 @@
 
 #include "PatternSerialization.h"
 
-int PATTERN_HUE[] = {0, 20, 255, 229, 120, 200, 207};
-// 120 should be green, not cyan
-// 229 pink
-// 22 orange
-// 200 lilac
-// 'a' green
-static_assert(
-	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
-	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
-
-// Each user (gang member) on the mesh gets to pick and broadcast
-// their own custom pattern. This custom pattern is a pattern algorithm (patternRef)
-// plus a pattern color (hue)
-struct UserPattern {
-	PatternReference patternRef;
-	uint8_t hue;
-	// IsActive?
-	// Duration? Remaining Time?
-};
-
 // When keeping track of running patterns, we need to know
-// both the UserPattern info as well as timing information
+// both the Shared Node pattern info as well as timing information
 // When to start running it, when to stop running it.
 struct ScheduledPattern {
-	UserPattern userPattern;
+	SharedNodeData nodeData;
 
 	unsigned long startMs;
 	unsigned long endMs;
@@ -51,7 +31,7 @@ struct ScheduledPattern {
 	}
 	
 	Pattern* GetPattern() const{
-		return patterns[userPattern.patternRef];
+		return patterns[nodeData.nodePattern];
 	}
 
 	// Returns a float in range [0-1] where 1 Represents full time remaining and 0 represents no time remaining
@@ -61,8 +41,18 @@ struct ScheduledPattern {
 	}
 
 	// Mutators
+	void StopNow() {
+		startMs = 0;
+		endMs = 0;
+	}
+	
 	void ScheduleNow(unsigned long duration) {
 		startMs = millis();
+		// TODO: overflow check
+		endMs = startMs + duration;
+	}
+	void ScheduleFuture(unsigned long start, unsigned long duration) {
+		startMs = start;
 		// TODO: overflow check
 		endMs = startMs + duration;
 	}
@@ -71,23 +61,35 @@ struct ScheduledPattern {
 template <unsigned int LED_COUNT>
 class PatternRunner {
    private:
+   	//Main schedule stuff
+	ustd::array<ScheduledPattern> m_patternSchedules;
 	
-	ScheduledPattern m_patternSchedules[PATTERNS_COUNT];
-	unsigned long m_durationMs;
+	//Metadata stuff for tracking active patterns
+   	uint32_t m_lastActivePatterns = 0;
+	uint32_t m_lastPatternMask = 0;
 
+	uint32_t activePatternMask() {
+		uint32_t patternMask = 0;
+		for (int i = 0; i < (PATTERNS_COUNT > 32 ? 32 : PATTERNS_COUNT); i++) {
+			if (!PatternActive(i)) continue;
+			patternMask |= (1 << i);
+		}
+		return patternMask;
+	}
+	
    public:
 	// Just making this buffer public to avoid more complicated getters
 	CRGB m_outBuffer[LED_COUNT];
 
-	PatternRunner(unsigned long duration = 1000) : m_durationMs(duration) {
+	PatternRunner(unsigned long duration = 1000) : m_patternSchedules(2, MAX_PEERS, 2, false) {
 		// Init pattern schedules
 		// Original logic: Create one schedule for each pattern. Pre-define hues
-		for (size_t i = 0; i < PATTERNS_COUNT; i++) {
-			// Init userPattern for this scheduled pattern.
-			m_patternSchedules[i].userPattern.patternRef = i;
-			m_patternSchedules[i].userPattern.hue = PATTERN_HUE[i];
-			m_patternSchedules[i].ScheduleNow(m_durationMs);
-		}
+		// for (size_t i = 0; i < PATTERNS_COUNT; i++) {
+		// 	// Init userPattern for this scheduled pattern.
+		// 	m_patternSchedules[i].userPattern.patternRef = i;
+		// 	m_patternSchedules[i].userPattern.hue = PATTERN_HUE[i];
+		// 	m_patternSchedules[i].ScheduleNow(m_durationMs);
+		// }
 	}
 	~PatternRunner() = default;
 
@@ -99,13 +101,39 @@ class PatternRunner {
 	bool PatternActive(int patternId) const {
 		return m_patternSchedules[patternId].IsActive();
 	}
+	
+	//todo: use
+	uint32_t GetNumActivePatterns() {
+		return m_lastActivePatterns;
+	}
 
-	size_t PatternCount() const { return PATTERNS_COUNT; }
 
 	// Setter
-	void StartPattern(int patternId) {
+	void StartPattern(int patternId, unsigned long duration) {
 		Serial.printf("%u: PatternRunner: Starting pattern %i\n", millis(), patternId);
-		m_patternSchedules[patternId].ScheduleNow(m_durationMs);
+		m_patternSchedules[patternId].ScheduleNow(duration);
+	}
+	
+	void StopAllPatterns() {
+		for (auto& ps : m_patternSchedules) {
+			ps.StopNow();
+		}
+	}
+	
+	void SetPatternSlot(size_t slotIdx, SharedNodeData nodeData, uint32_t startMilis, uint32_t duration) {
+		if(slotIdx >= MAX_PEERS) {
+			Serial.println("exceed max pattern slots, return");
+			return;
+		}
+		
+		ScheduledPattern& slotData = m_patternSchedules[slotIdx];
+					
+		slotData.nodeData = nodeData;
+		
+		Serial.printf("%u: PatternRunner.SetPatternSlot: Updating slot %u to have pattern %i. Starting at %u for duration %u\n",
+					millis(), slotIdx, slotData.nodeData.nodePattern, startMilis, duration);
+					
+		slotData.ScheduleFuture(startMilis, duration);
 	}
 
 	// Key Callbacks
@@ -117,26 +145,13 @@ class PatternRunner {
 		}
 	}
 
-   private:
-	uint32_t m_lastPatternMask = 0;
-
-	uint32_t activePatternMask() {
-		uint32_t patternMask = 0;
-		for (int i = 0; i < (PATTERNS_COUNT > 32 ? 32 : PATTERNS_COUNT); i++) {
-			if (!PatternActive(i)) continue;
-			patternMask |= (1 << i);
-		}
-		return patternMask;
-	}
-
    public:
 	// TODO: migrate to .cpp?
 	void updateLedColors() {
-		int activeCt = 0;
-		for (int i = 0; i < PATTERNS_COUNT; i++) {
-			ScheduledPattern& scheduledPattern = m_patternSchedules[i];
+		m_lastActivePatterns = 0;
+		for (ScheduledPattern& scheduledPattern : m_patternSchedules) {
 			if (!scheduledPattern.IsActive()) continue;
-			activeCt++;
+			m_lastActivePatterns++;
 			
 			//Execute pattern on all pixels
 			for (int j = 0; j < LED_COUNT; j++) {
@@ -146,18 +161,18 @@ class PatternRunner {
 				
 				// TODO: re-introduce the concept of inboundHue (renamed to legacy_inbound_hue), which isn't sent / changed currently
 				//  This also includes the idea of self color => pattern_hue lookup vs inbound hue for self vs other patterns
-				m_outBuffer[j] = patternAlgo->paintLed(position, remaining, m_outBuffer[j], scheduledPattern.userPattern.hue);
+				m_outBuffer[j] = patternAlgo->paintLed(position, remaining, m_outBuffer[j], scheduledPattern.nodeData.hue);
 			}
 		}
 
 		//Look at change in pattern mask to see when patterns stop/start and print message about it
 		uint32_t activeMask = activePatternMask();
 		if (activeMask != m_lastPatternMask) {
-			Serial.printf("%u: PatternRunner: %i Active Patterns. PatternMask:%i\n", millis(), activeCt, activeMask);
-			if (activeCt == 0) Serial.print("    *All Patterns Dormant*\n");
+			Serial.printf("%u: PatternRunner: %i Active Patterns. PatternMask:%i\n", millis(), m_lastActivePatterns, activeMask);
+			if (m_lastActivePatterns == 0) Serial.print("    *All Patterns Dormant*\n");
 		}
 
-		if (activeCt == 0) {
+		if (m_lastActivePatterns == 0) {
 			// Slowly fade out
 			for (int j = 0; j < LED_COUNT; j++) {
 				m_outBuffer[j] = m_outBuffer[j].nscale8(200);

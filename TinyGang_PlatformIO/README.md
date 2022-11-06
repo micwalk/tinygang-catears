@@ -64,38 +64,34 @@ The class `PatternRunner` keeps track of which patterns are playing. Multiple pa
 The `PatternRunner` maintains a schedule of patterns managed by an array of `ScheduledPattern[]`. Currently it maintains the legacy logic of having as many schedule slots as there are patterns.
 
 A `ScheduledPattern` contains info on the:
-* pattern algorithm to display
-* hue to display
+* NodeInfo to display
 * start and stop times
 
 This creates 3 implict states
-1. Active -- Currently playing an animation. Recognized when ellapseTimeMs `ellapseTimeMs[i] <= durationMs`. Queryable via `PatternRunner::PatternActive(int patternId)`
-2. Timeout -- Done playing an animation, but before elligible for replay.In this state when `ellapseTimeMs[i] >= durationMs && ellapseTimeMs[i] <= repeatDurationMs`
-3. Ready -- Inactive but waiting to be triggered. This when NOT the above to, AKA: `ellapseTimeMs[i] > repeatDurationMs`
+1. Active -- Currently playing an animation. Recognized when current time is between start and end times.
+2. Scheduled -- Current time is before star time
+3. Done -- current time is after end time
 
-The **chosen pattern** will always trigger automatically when they reach the Ready state. Essentially starting to play again every `repeatDurationMs` millis.
-When you are on a **mesh**, each jacket will broadcast what pattern it is playing. When you receive a broadcast for a pattern, the pattern is activated by resetting its elapsedTime to 0.
+The **chosen pattern** will always be scheduled.
 
 ### Pattern Blending: 
-When multiple patterns are playing, they are all drawn to the same framebuffer in the order of the pattern id. The `PatternRunner` does not perform any blending itself, BUT it does pass the current value of the pixel into the next pattern. This pattern may choose to do something with this parial render, or overwrite it entirely. On several patterns, such as WhiteTrace, it will replace the pixels corresponding to the trace, but simply fade out other pixels.
+When multiple patterns are playing, they are all drawn to the same framebuffer in the order of the pattern id. The `PatternRunner` does not perform any blending itself, BUT it does pass the current value of the pixel into the next pattern. This pattern may choose to do something with this parial render, or overwrite it entirely. On several patterns, such as WhiteTrace, it will replace the pixels corresponding to the trace, but simply fade out other pixels. The scheduler maintains a small overlap between patterns (150ms by default). This looks better on some patterns than others.
 
-### Mesh Pattern Synchronization: 
-When you're on a mesh, everyone broadcasts their pattern on repeat every `repeatDurationMs` milliseconds. All patterns are played simultaneuously, starting at the moment they are recieved.
+### Mesh Pattern Scheduler & Sync: 
+When you're on a mesh, everyone broadcasts when they are playing their pattern. When you receive a pattern broadcast, it is stored on your device.
 
-Sometimes this create's an effect where all patterns in the mesh will play out in sequence. However sometimes when the natural timing of the devices is very similar, the patterns play in parallel, overlapping each other. This seems to be because there is no timing information synchronised. And because the pattern precidence is always defined by pattern id, this sometimes creates something like a race condition, where in the worst case scenario a higher numbered pattern will be broadcast miliseconds after starting your own pattern.
+The pattern scheduler works by sorting everyone's NodeId, then using the **mesh time** (separate from local time, provided by painlessMesh), schedules everyone's pattern to play for `PATTERN_DURATION` in order of NodeId. The start time is a simple modulo of `mesh time % (duration * node count)` Since everyone shares node id and mesh time, everyone derives an identical schedule! 
 
-Consider a mesh with 2 nodes, `N1` and `N2`, with `durationMs = 4000` and `repeatDurationMs = 8000`. Call the difference in boot time in seconds between them `T`.
-- When `T % 8 == 4` the patterns are perfectly in sequence. One pattern plays, then the other, and no time in between.
-- When `T % 8 == 0` the patterns are perfectly overlapping. Both patterns will play simultaneously, mostly resulting in the higher mode pattern being visible. Worse still, after 4 seconds of play time, there will be 4 seconds of darkness.
-- When `T % 8 == 2` N1's pattern pattern will play for 2 seconds, followed by 2 seconds of overlap, 2 seconds of only N2's pattern, then 2 seconds of darkness.
+This schedule actually gets recomputed overly often, but it is deterministic and takes into account partial execution, so you don't even notice.
+
+If no patterns are playing, a reschedule is forced. Might be smarter to have a concept of repeat time built in, but this works for now.
 
 ## Potential Improvements
 
-1. Pattern precidence is always just based on predefined pattern selection and it alwyas overwrites.
-    Also the way this is implemented is weird, if there is only one true output buffer then it shouldn't be repeated in code. Just have one consolidated output buffer.
-    Implement leader selection
-2. Send time remaining for better sync
-3. Dynamic pattern precidence 
+1. Send Hue for user set hue
+2. Send Duration for user set duration
+3. Dynamic pattern precidence? Leader election?
+4. Scaling time with lots of nodes?
 
 ## The Wire Protocol
 I'm calling the format of primary intentionally broadcast messages between mesh nodes the wire protocol. The painlessMesh library itself has detailed documentation on automatically sent messages like time synchronization and latency detection.
@@ -109,4 +105,4 @@ Only one Byte is sent, corresponding to the "pattern command" as above.
 Backwards compatability is semi preserved, where if the pattern command is unmatched, then this is instead interpreted as a hue.
 
 ### Wire Protocol V3 - TinyGang_PlatformIO aka GlitterCats
-For now, attempting to maintain the same as protocol V2 but subject to change!
+For now, attempting to maintain the same as protocol V2 but subject to change! All pattern scheduler changes use the same wire protocol and since the own node broadcast time is the same, old nodes sorta stay in sync.

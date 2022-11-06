@@ -3,9 +3,6 @@
 
 #include "PatternSerialization.h"
 #include "UserConfig.h"
-
-//Must define platform first:
-#define __ESP32__
 #include "ustd_map.h"
 
 // TODO: Make this a proper header that be included in multiple cpp files without
@@ -32,9 +29,6 @@
 // Sorta like statically defined callbacks
 void receiveMeshMsg(uint32_t nodeName, SharedNodeData nodeData);
 void rescheduleLightsCallbackMain();
-
-
-const int MAX_PEERS = 100;
 
 class GangMesh {
    public:
@@ -64,19 +58,36 @@ class GangMesh {
 	Task blinkNoNodes;
 	bool meshStatusLightOn = false;
 
+	int32_t m_meshTimeOffset = 0;
+
+	IPAddress m_localIp;
+	IPAddress getlocalIP() {
+		return IPAddress(mesh.getStationIP());
+	}
+
    public:
 	GangMesh() : taskCalculateDelay(TASK_SECOND * 1, TASK_FOREVER,
 	                                std::bind(&GangMesh::sendDelayMessage, this)),
-				 m_nodeData(2, MAX_PEERS, 2, false) {
+				 m_nodeData(2, MAX_PEERS, 2, false),
+				 m_localIp(0, 0, 0, 0) {
 		// Nothing to do here
 	}
 
+	// Initialie mesh
 	void setup();
+
+	// Run mesh update
 	void update() {
 		mesh.update();
 		digitalWrite(STATUS_LED, !meshStatusLightOn);
+
+		if (m_localIp != getlocalIP()) {
+			m_localIp = getlocalIP();
+			Serial.printf("\n*** GOT NEW LOCAL IP: %s ***\n", m_localIp.toString());
+		}
 	}
 
+	// Wrapper for mesh.sendBroadcast
 	void sendBroadcast(String message) {
 		mesh.sendBroadcast(message);
 	}
@@ -86,6 +97,14 @@ class GangMesh {
 	void changedConnectionCallback();
 	void nodeTimeAdjustedCallback(int32_t offset);
 	void delayReceivedCallback(uint32_t from, int32_t delay);
+
+	uint32_t TimeMeshToLocal(uint32_t meshMicros) {
+		return meshMicros - m_meshTimeOffset;
+	}
+
+	uint32_t TimeLocalToMesh(uint32_t localMicros) {
+		return localMicros + m_meshTimeOffset;
+	}
 
    private:
 	void resetBlinkTask();
