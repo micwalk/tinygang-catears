@@ -2,6 +2,9 @@
    Tiny Gang is an open source project to include multiple jacket wearers
    the base code is developed by @mpinner and @adellelin for two jacket
    interaction and is to be expanded for multiple players
+
+   Enhancements made by Michael Walker to support PlatformIO IDE, and 
+   enable deterministic scheduling for larger meshes.
 */
 
 #include <Arduino.h>
@@ -31,17 +34,20 @@ int chosenPattern = m_ownNodeData.nodePattern;  // Current pattern state
 #endif
 
 // Pattern running info
-uint32_t PATTERN_DURATION = 4000; //Length each pattern plays. Note: If this isn't the same on all nodes then they won't sync up!
-unsigned PATTERN_OVERLAP_MS = 150;
+const uint32_t PATTERN_DURATION_MS = 4000; //Length each pattern plays. Note: If this isn't the same on all nodes then they won't sync up!
+const unsigned PATTERN_OVERLAP_MS = 150;
 
-PatternRunner<NUM_LEDS> patternRunner(PATTERN_DURATION);
+const uint32_t PATTERN_DURATION_MICROS = PATTERN_DURATION_MS * 1000;
+const unsigned PATTERN_OVERLAP_MICROS = PATTERN_OVERLAP_MS * 1000;
+
+PatternRunner<NUM_LEDS> patternRunner;
 
 // Pattern display
 CRGB render_leds[NUM_LEDS];
 
 // Pattern Broadcasting
 void broadcastPattern();
-uint32_t BROADCAST_REPEAT_TIME = PATTERN_DURATION + PATTERN_OVERLAP_MS * 2;  // Rebroadcast info timer
+uint32_t BROADCAST_REPEAT_TIME = PATTERN_DURATION_MS + PATTERN_OVERLAP_MS * 2;  // Rebroadcast info timer
 elapsedMillis lastBroadcastTime;
 
 // More Declarations
@@ -87,7 +93,7 @@ void setup() {
 	FastLED.setDither(0);
 
 	patternRunner.setup();
-	patternRunner.SetPatternSlot(0, m_ownNodeData, 0, PATTERN_DURATION);
+	patternRunner.SetPatternSlot(0, m_ownNodeData, 0, PATTERN_DURATION_MS);
 	
 	gangMesh.setup();
 }
@@ -225,7 +231,7 @@ void receiveKeyboardMsg(char inChar) {
 		              millis(), inChar, patternIdx, PATTERNS_COUNT);
 		m_ownNodeData.nodePattern = patternIdx;
 		//todo: update data in pattern runner
-		patternRunner.StartPattern(m_ownNodeIndex, PATTERN_DURATION);
+		patternRunner.StartPattern(m_ownNodeIndex, PATTERN_DURATION_MS);
 	} else {
 		// if incoming characters do not correspond to pattern ID
 		// then the other device must be running wire protocol v1.
@@ -255,43 +261,27 @@ void rescheduleLightsCallbackMain() {
 	
 	unsigned long myMicros = micros();
 	uint32_t meshMicros = gangMesh.mesh.getNodeTime();
-	int meshDiff = meshMicros - myMicros;
+	int meshDiff = meshMicros - myMicros; //TODO: Rollover protection...can just change type i think?
 
 	Serial.printf("%u: Pattern Scheduler: MyMicros: %u MeshMicros: %u (diff: %i)\n",
 					millis(), myMicros, meshMicros, meshDiff);
 
 	
-	uint32_t durationMicros = PATTERN_DURATION * 1000;
-	
-	uint32_t totalRepeatMicros = durationMicros * nodeCount;
+	uint32_t totalRepeatMicros = PATTERN_DURATION_MICROS * nodeCount;
 	uint32_t intervalPortion = meshMicros % totalRepeatMicros;
-	
+
+	//TODO: check for rollover safety
 	uint32_t lastStartTime = meshMicros - intervalPortion;
 	uint32_t nextStartTime = lastStartTime + totalRepeatMicros;
 
-	Serial.printf("%u: Pattern Scheduler: Currently %u into pattern repeat. Current round lasts from [%u - %u] mesh. [%u - %u] local \n",
-					millis(), intervalPortion, lastStartTime, nextStartTime, gangMesh.TimeMeshToLocal(lastStartTime)/1000, gangMesh.TimeMeshToLocal(nextStartTime) / 1000);
+	Serial.printf("%u [%u]: Pattern Scheduler: Currently %u into pattern repeat. Current round lasts from [%u - %u] mesh. [%u - %u] local \n",
+					millis(), micros(), intervalPortion, lastStartTime, nextStartTime, gangMesh.TimeMeshToLocal(lastStartTime), gangMesh.TimeMeshToLocal(nextStartTime));
 
 	patternRunner.StopAllPatterns();
 	size_t nodeIdx = 0;
 	for (auto& nodeId : allNodes) {
-		uint32_t nodeStartTime = lastStartTime + durationMicros * nodeIdx;
-		uint32_t nodeEndTime = lastStartTime + durationMicros * (1+nodeIdx);
 		
-		Serial.printf("%u: [%u] Pattern Scheduler: Slot: [%u-%u]mesh [%u-%u]local\n",
-					millis(), nodeIdx, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime)/1000, gangMesh.TimeMeshToLocal(nodeEndTime)/1000);
-					
-		if(nodeEndTime < meshMicros) {
-			//push it to the next one instead			
-			nodeStartTime = nextStartTime + durationMicros * nodeIdx;
-			nodeEndTime   = nextStartTime + durationMicros * (1+nodeIdx);
-			
-			Serial.printf("%u: [%u] Pattern Scheduler: Shifting since slot expired. New Slot: [%u-%u]mesh [%u-%u]local\n",
-					millis(), nodeIdx, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime)/1000, gangMesh.TimeMeshToLocal(nodeEndTime)/1000);
-		}
-		
-		uint32_t nodeStartLocal = gangMesh.TimeMeshToLocal(nodeStartTime) / 1000;
-		
+		//Get Node data
 		SharedNodeData *whichNodeData = 0;
 		if(gangMesh.mesh.getNodeId() == nodeId) {
 			//Self, re-generate own pattern
@@ -302,15 +292,36 @@ void rescheduleLightsCallbackMain() {
 			//Other, lookup
 			whichNodeData = &gangMesh.m_nodeData[nodeId];
 		}
+		
+		//Figure out schedule
+		uint32_t nodeStartTime = lastStartTime + PATTERN_DURATION_MICROS * nodeIdx;
+		uint32_t nodeEndTime = lastStartTime + PATTERN_DURATION_MICROS * (1+nodeIdx);
+		
+		Serial.printf("%u: [%u] Pattern Scheduler: Slot: [%u-%u]mesh [%u-%u]local\n",
+					millis(), nodeIdx, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
+
+		//TODO: make rollover safe -- needs to compare duration not current time.
+		if(nodeEndTime < meshMicros) {
+			//push it to the next one instead			
+			nodeStartTime = nextStartTime + PATTERN_DURATION_MICROS * nodeIdx;
+			nodeEndTime   = nextStartTime + PATTERN_DURATION_MICROS * (1+nodeIdx);
+			
+			Serial.printf("%u: [%u] Pattern Scheduler: Shifting since slot expired. New Slot: [%u-%u]mesh [%u-%u]local\n",
+					millis(), nodeIdx, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
+		}
+		
+		uint32_t nodeStartLocal = gangMesh.TimeMeshToLocal(nodeStartTime);
 		 
 		Serial.printf("%u: [%u] Pattern Scheduler: Should start node %u's pattern %i at mesh time %u local time %u\n",
 					millis(), nodeIdx, nodeId, whichNodeData->nodePattern, nodeStartTime, nodeStartLocal);
 		
 		
-		uint32_t startWithOverlap = std::min(nodeStartLocal, nodeStartLocal - PATTERN_OVERLAP_MS);
+		//TODO: better fix for overflow than this
+		uint32_t startWithOverlap = std::min(nodeStartLocal, nodeStartLocal - PATTERN_OVERLAP_MICROS);
+		
 		//Actually update info and trigger pattern
 		//TODO: convert to passing ptrs all through code.
-		patternRunner.SetPatternSlot(nodeIdx, *whichNodeData, startWithOverlap, PATTERN_DURATION + PATTERN_OVERLAP_MS);
+		patternRunner.SetPatternSlot(nodeIdx, *whichNodeData, startWithOverlap, PATTERN_DURATION_MICROS + 2*PATTERN_OVERLAP_MICROS);
 		nodeIdx++;
 	}//End loop over nodes	
 	

@@ -11,23 +11,33 @@
 struct ScheduledPattern {
 	SharedNodeData nodeData;
 
-	unsigned long startMs;
-	unsigned long endMs;
-
+	uint32_t startMicros;
+	uint32_t endMicros;
+	
+	//TODO: rewrite using duration instead of instants
+	//probably have to introduce end point?
+	uint32_t scheduledTime;
+	uint32_t startDelay;
+	uint32_t duration; //using duration instead of endMicros
+	
+	
 	// Getter
 	bool IsActive() const {
-		auto now = millis();
-		return now >= startMs && now < endMs;
+		auto now = micros();
+		
+		// return (now - scheduledTime >= startDelay) && (now - scheduledTime < duration);
+		
+		return now >= startMicros && now < endMicros;
 	}
 
 	unsigned long Duration() const {
-		return endMs - startMs;
+		return endMicros - startMicros;
 	}
 
 	unsigned long Elapsed() const {
-		auto now = millis();
-		if (now < startMs) return 0;
-		return now - startMs;
+		auto now = micros();
+		if (now < startMicros) return 0;
+		return now - startMicros;
 	}
 	
 	Pattern* GetPattern() const{
@@ -42,19 +52,19 @@ struct ScheduledPattern {
 
 	// Mutators
 	void StopNow() {
-		startMs = 0;
-		endMs = 0;
+		startMicros = 0;
+		endMicros = 0;
 	}
 	
-	void ScheduleNow(unsigned long duration) {
-		startMs = millis();
+	void ScheduleNow(unsigned long durationMicros) {
+		startMicros = micros();
 		// TODO: overflow check
-		endMs = startMs + duration;
+		endMicros = startMicros + durationMicros;
 	}
-	void ScheduleFuture(unsigned long start, unsigned long duration) {
-		startMs = start;
+	void ScheduleFuture(unsigned long start, unsigned long durationMicros) {
+		startMicros = start;
 		// TODO: overflow check
-		endMs = startMs + duration;
+		endMicros = startMicros + durationMicros;
 	}
 };
 
@@ -81,7 +91,7 @@ class PatternRunner {
 	// Just making this buffer public to avoid more complicated getters
 	CRGB m_outBuffer[LED_COUNT];
 
-	PatternRunner(unsigned long duration = 1000) : m_patternSchedules(2, MAX_PEERS, 2, false) {
+	PatternRunner() : m_patternSchedules(2, MAX_PEERS, 2, false) {
 		// Init pattern schedules
 		// Original logic: Create one schedule for each pattern. Pre-define hues
 		// for (size_t i = 0; i < PATTERNS_COUNT; i++) {
@@ -109,9 +119,9 @@ class PatternRunner {
 
 
 	// Setter
-	void StartPattern(int patternId, unsigned long duration) {
+	void StartPattern(int patternId, unsigned long durationMicros) {
 		Serial.printf("%u: PatternRunner: Starting pattern %i\n", millis(), patternId);
-		m_patternSchedules[patternId].ScheduleNow(duration);
+		m_patternSchedules[patternId].ScheduleNow(durationMicros);
 	}
 	
 	void StopAllPatterns() {
@@ -120,20 +130,21 @@ class PatternRunner {
 		}
 	}
 	
-	void SetPatternSlot(size_t slotIdx, SharedNodeData nodeData, uint32_t startMilis, uint32_t duration) {
+	void SetPatternSlot(size_t slotIdx, SharedNodeData nodeData, uint32_t startMicros, uint32_t durationMicros) {
 		if(slotIdx >= MAX_PEERS) {
 			Serial.println("exceed max pattern slots, return");
 			return;
 		}
 		
+		//Update slot data
 		ScheduledPattern& slotData = m_patternSchedules[slotIdx];
-					
 		slotData.nodeData = nodeData;
 		
-		Serial.printf("%u: PatternRunner.SetPatternSlot: Updating slot %u to have pattern %i. Starting at %u for duration %u\n",
-					millis(), slotIdx, slotData.nodeData.nodePattern, startMilis, duration);
+		//Schedule
+		Serial.printf("%u [%u]: PatternRunner.SetPatternSlot: Updating slot %u to have pattern %i. Starting at %u for durationMicros %u\n",
+					millis(), micros(), slotIdx, slotData.nodeData.nodePattern, startMicros, durationMicros);
 					
-		slotData.ScheduleFuture(startMilis, duration);
+		slotData.ScheduleFuture(startMicros, durationMicros);
 	}
 
 	// Key Callbacks

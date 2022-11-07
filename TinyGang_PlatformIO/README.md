@@ -25,9 +25,20 @@ Seems to be right pinout: https://circuits4you.com/2018/12/31/esp32-devkit-esp32
 
 Also purchased Seeed Studio XIAO ESP32C3: https://www.amazon.com/dp/B0B94JZ2YF
  -- This thing is TINY
+
+### LEDs:
+LED Strip - WS2812b 5V Individual Addressable LED Strip Light SMD5050 RGB Strip 3.2FT 144Pixels/m 144Pixels - https://www.amazon.com/dp/B09PBGZMNS?ref=ppx_yo2ov_dt_b_product_details&th=1
+
 ### Sensors:
 MPU 6050 Accelerometer + Gyroscope: https://www.amazon.com/dp/B00LP25V1A
 
+### Misc:
+Random bits : https://www.amazon.com/dp/B01ERP6WL4?psc=1&ref=ppx_yo2ov_dt_b_product_details
+330 ohm resistor on data line
+100 uf capacitor on power line
+
+power bank 5000mah https://www.amazon.com/dp/B0B468F282?psc=1&ref=ppx_yo2ov_dt_b_product_details
+note: this power bank is rather large, good for shoving in pocket and running a wire up to head, not so much for attaching to ears.
 
 ### Michael Pinouts
 Since the above devboard is kinda large for a breadboard, I have it attached with only the left side (as in pinouts, with usb port on bottom) accessible.
