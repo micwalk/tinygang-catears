@@ -10,34 +10,24 @@
 // When to start running it, when to stop running it.
 struct ScheduledPattern {
 	SharedNodeData nodeData;
-
-	uint32_t startMicros;
-	uint32_t endMicros;
 	
-	//TODO: rewrite using duration instead of instants
-	//probably have to introduce end point?
-	uint32_t scheduledTime;
+	elapsedMicros timeSinceSchedule;
 	uint32_t startDelay;
 	uint32_t duration; //using duration instead of endMicros
 	
-	
 	// Getter
 	bool IsActive() const {
-		auto now = micros();
-		
-		// return (now - scheduledTime >= startDelay) && (now - scheduledTime < duration);
-		
-		return now >= startMicros && now < endMicros;
+		return (timeSinceSchedule >= startDelay) && (timeSinceSchedule < (startDelay + duration));	
 	}
 
 	unsigned long Duration() const {
-		return endMicros - startMicros;
+		return duration;
 	}
 
 	unsigned long Elapsed() const {
 		auto now = micros();
-		if (now < startMicros) return 0;
-		return now - startMicros;
+		if (timeSinceSchedule < startDelay) return 0;
+		return timeSinceSchedule - startDelay;
 	}
 	
 	Pattern* GetPattern() const{
@@ -52,19 +42,34 @@ struct ScheduledPattern {
 
 	// Mutators
 	void StopNow() {
-		startMicros = 0;
-		endMicros = 0;
+		timeSinceSchedule = 0;
+		startDelay = 0;
+		duration = 0;
 	}
 	
 	void ScheduleNow(unsigned long durationMicros) {
-		startMicros = micros();
-		// TODO: overflow check
-		endMicros = startMicros + durationMicros;
+		timeSinceSchedule = 0;
+		startDelay = 0;
+		duration = durationMicros;
 	}
+	
 	void ScheduleFuture(unsigned long start, unsigned long durationMicros) {
-		startMicros = start;
-		// TODO: overflow check
-		endMicros = startMicros + durationMicros;
+		auto now = micros();
+		//Note: this doesn't work when start has rolled over, will think its far in the past.
+		bool schedPast = start < now;
+		if(schedPast) {
+			timeSinceSchedule = now - start;			
+			startDelay = 0;
+			duration = durationMicros;
+		} else {
+			timeSinceSchedule = 0;
+			startDelay = start - now; 
+			duration = durationMicros;	
+		}
+		
+		Serial.printf("%u [%u]: Sched(a_start:%u) %s timeSinceSchedule:%u, startDelay:%u, duration:%u\n",
+			millis(), now, start, schedPast ? "PAST" : "FUTURE" , timeSinceSchedule, startDelay, duration);
+		
 	}
 };
 
@@ -78,13 +83,13 @@ class PatternRunner {
    	uint32_t m_lastActivePatterns = 0;
 	uint32_t m_lastPatternMask = 0;
 
-	uint32_t activePatternMask() {
-		uint32_t patternMask = 0;
-		for (int i = 0; i < (PATTERNS_COUNT > 32 ? 32 : PATTERNS_COUNT); i++) {
+	uint32_t activeScheduleMask() {
+		uint32_t mask = 0;
+		for (int i = 0; i < (scheduleCount() > 32 ? 32 : scheduleCount()); i++) {
 			if (!PatternActive(i)) continue;
-			patternMask |= (1 << i);
+			mask |= (1 << i);
 		}
-		return patternMask;
+		return mask;
 	}
 	
    public:
@@ -103,6 +108,10 @@ class PatternRunner {
 	}
 	~PatternRunner() = default;
 
+	unsigned int scheduleCount() {
+		return m_patternSchedules.length();
+	}
+	
 	// Getters
 	unsigned long PatternElapsed(int patternId) const {
 		return m_patternSchedules[patternId].Elapsed();
@@ -177,9 +186,9 @@ class PatternRunner {
 		}
 
 		//Look at change in pattern mask to see when patterns stop/start and print message about it
-		uint32_t activeMask = activePatternMask();
+		uint32_t activeMask = activeScheduleMask();
 		if (activeMask != m_lastPatternMask) {
-			Serial.printf("%u: PatternRunner: %i Active Patterns. PatternMask:%i\n", millis(), m_lastActivePatterns, activeMask);
+			Serial.printf("%u: PatternRunner: ActiveCt: %u PatternMask: %u\n", millis(), m_lastActivePatterns, activeMask);
 			if (m_lastActivePatterns == 0) Serial.print("    *All Patterns Dormant*\n");
 		}
 

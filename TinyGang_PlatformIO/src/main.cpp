@@ -8,16 +8,17 @@
 */
 
 #include <Arduino.h>
+
+// *** LOOKING TO CHANGE WHAT PIN YOU HAVE ATTACHED? ***
+// *** SEE UserConfig.h ***
+#include "UserConfig.h"
+
 // Note: for these two, must include FastLED and elapsedMillis libraries in your Audrino IDE/platformIO
 #include <FastLED.h>
 #include <elapsedMillis.h>
 
 #include "GangMesh.h"
 #include "PatternRunner.h"
-
-// *** LOOKING TO CHANGE WHAT PIN YOU HAVE ATTACHED? ***
-// *** SEE UserConfig.h ***
-#include "UserConfig.h"
 
 // Some State
 int legacy_inbound_hue = 229;  // incoming char sets color
@@ -35,7 +36,7 @@ int chosenPattern = m_ownNodeData.nodePattern;  // Current pattern state
 
 // Pattern running info
 const uint32_t PATTERN_DURATION_MS = 4000; //Length each pattern plays. Note: If this isn't the same on all nodes then they won't sync up!
-const unsigned PATTERN_OVERLAP_MS = 150;
+const unsigned PATTERN_OVERLAP_MS = 300;
 
 const uint32_t PATTERN_DURATION_MICROS = PATTERN_DURATION_MS * 1000;
 const unsigned PATTERN_OVERLAP_MICROS = PATTERN_OVERLAP_MS * 1000;
@@ -65,6 +66,8 @@ void updateOwnNodeData() {
 	m_ownNodeData.nodePattern = getChosenPattern();
 	m_ownNodeData.resetDefaultHue();
 }
+
+elapsedMillis rescheduleTimerFailsafe;
 
 void setup() {
 	const unsigned long BAUD = 921600;
@@ -191,9 +194,10 @@ void checkPatternTimer() {
 		rescheduleLightsCallbackMain();
 	}
 	
-	if(patternRunner.GetNumActivePatterns() == 0) {
+	if(patternRunner.GetNumActivePatterns() == 0 && rescheduleTimerFailsafe > PATTERN_DURATION_MS/2) {
 		Serial.printf("%u: No patterns active!\n", millis());
 		rescheduleLightsCallbackMain();
+		rescheduleTimerFailsafe = 0;
 	}
 	
 	return;
@@ -294,34 +298,29 @@ void rescheduleLightsCallbackMain() {
 		}
 		
 		//Figure out schedule
-		uint32_t nodeStartTime = lastStartTime + PATTERN_DURATION_MICROS * nodeIdx;
-		uint32_t nodeEndTime = lastStartTime + PATTERN_DURATION_MICROS * (1+nodeIdx);
+		uint32_t nodeStartTime = lastStartTime + PATTERN_DURATION_MICROS * nodeIdx - PATTERN_OVERLAP_MICROS;
+		uint32_t nodeEndTime = lastStartTime + PATTERN_DURATION_MICROS * (1+nodeIdx) + PATTERN_OVERLAP_MICROS;
 		
-		Serial.printf("%u: [%u] Pattern Scheduler: Slot: [%u-%u]mesh [%u-%u]local\n",
-					millis(), nodeIdx, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
+		Serial.printf("%u: (Node %u Id: %u ) Pattern Scheduler: Slot: [%u-%u]mesh [%u-%u]local\n",
+					millis(), nodeIdx, nodeId, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
 
 		//TODO: make rollover safe -- needs to compare duration not current time.
 		if(nodeEndTime < meshMicros) {
 			//push it to the next one instead			
-			nodeStartTime = nextStartTime + PATTERN_DURATION_MICROS * nodeIdx;
-			nodeEndTime   = nextStartTime + PATTERN_DURATION_MICROS * (1+nodeIdx);
+			nodeStartTime = nextStartTime + PATTERN_DURATION_MICROS * nodeIdx - PATTERN_OVERLAP_MICROS;
+			nodeEndTime   = nextStartTime + PATTERN_DURATION_MICROS * (1+nodeIdx) + PATTERN_OVERLAP_MICROS;
 			
-			Serial.printf("%u: [%u] Pattern Scheduler: Shifting since slot expired. New Slot: [%u-%u]mesh [%u-%u]local\n",
-					millis(), nodeIdx, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
+			Serial.printf("%u: (Node %u Id: %u ) Pattern Scheduler: Shifting since slot expired. New Slot: [%u-%u]mesh [%u-%u]local\n",
+					millis(), nodeIdx, nodeId, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
 		}
 		
+		//Convert to local, add overlap
 		uint32_t nodeStartLocal = gangMesh.TimeMeshToLocal(nodeStartTime);
-		 
-		Serial.printf("%u: [%u] Pattern Scheduler: Should start node %u's pattern %i at mesh time %u local time %u\n",
-					millis(), nodeIdx, nodeId, whichNodeData->nodePattern, nodeStartTime, nodeStartLocal);
-		
-		
-		//TODO: better fix for overflow than this
-		uint32_t startWithOverlap = std::min(nodeStartLocal, nodeStartLocal - PATTERN_OVERLAP_MICROS);
+		//todo: overlap rollover?
 		
 		//Actually update info and trigger pattern
 		//TODO: convert to passing ptrs all through code.
-		patternRunner.SetPatternSlot(nodeIdx, *whichNodeData, startWithOverlap, PATTERN_DURATION_MICROS + 2*PATTERN_OVERLAP_MICROS);
+		patternRunner.SetPatternSlot(nodeIdx, *whichNodeData, nodeStartLocal, PATTERN_DURATION_MICROS + 2*PATTERN_OVERLAP_MICROS);
 		nodeIdx++;
 	}//End loop over nodes	
 	
