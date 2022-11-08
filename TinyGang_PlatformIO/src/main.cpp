@@ -69,14 +69,25 @@ void updateOwnNodeData() {
 
 elapsedMillis rescheduleTimerFailsafe;
 
+
+// #define SIZE 232879
+// char dummy[SIZE] = {'a'};
+
 void setup() {
 	const unsigned long BAUD = 921600;
 	// put your setup code here, to run once:
 	Serial.begin(BAUD);
+	delay(10);
 	Serial.println("\n\n******TinyGang Reset******");
+	delay(10);
 	Serial.println(__FILE__);
+	delay(10);
 	Serial.println(__DATE__);
+	delay(10);
 
+	// dummy[SIZE-1] = '\n';
+    // if(dummy[0] == 'a') Serial.println("Hello, bloated world");
+	
 #if defined(PATTERN_SELECT_PUSHBTN)
 	// Setup pushbutton
 	cyclePatternBtn.attachClick(onPatternChangeClick);
@@ -89,16 +100,24 @@ void setup() {
 #endif
 	// No setup needed for const pattern select
 
+	delay(150);
+	//Setup FastLED
 	// TODO: Better user configurable LED setup
-	FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(render_leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+	FastLED.addLeds<CHIPSET, PIN_LED_STRIP_1, COLOR_ORDER>(render_leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 	FastLED.setBrightness(LED_BRIGHTNESS);
 	FastLED.setMaxPowerInVoltsAndMilliamps(MAX_VOLTS, MAX_MILLIAMPS);
-	FastLED.setDither(0);
-
+	// FastLED.setDither(0);
+	delay(150);
+	//Setup pattern runner
 	patternRunner.setup();
 	patternRunner.SetPatternSlot(0, m_ownNodeData, 0, PATTERN_DURATION_MS);
+	rescheduleTimerFailsafe = PATTERN_DURATION_MS*2;
 	
+	delay(150);
+	//Setup wifi mesh
 	gangMesh.setup();
+	// delay(150);
+	pinMode(PIN_LED_STATUS, OUTPUT);
 }
 
 void handleKeyboardInput() {
@@ -171,6 +190,17 @@ void show() {
 				render_leds[i] = patternRunner.m_outBuffer[i];
 			}
 			break;
+		// Scratch code for only doing the middle	
+		// case RENDER_MIDDLE:
+		// 	float middlePortion = .66f;
+		// 	float halfMid = (1-middlePortion) / 2;
+		// 	int startLed = (int) (halfMid * NUM_LEDS);
+		// 	int endLed = (int) ((1-halfMid) * NUM_LEDS);
+			
+		// 	for (int i = startLed; i < endLed; i++) {
+		// 		render_leds[i] = patternRunner.m_outBuffer[i];
+		// 	}
+		// 	break;
 	}
 
 	FastLED.show();

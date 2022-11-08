@@ -3,7 +3,7 @@
 void GangMesh::setup() {
 	Serial.println("******GangMesh Setup******");
 	
-	pinMode(STATUS_LED, OUTPUT);
+	pinMode(PIN_LED_STATUS, OUTPUT);
 	mesh.setDebugMsgTypes(ERROR | DEBUG);  // set before init() so that you can see error messages
 	mesh.init(MESH_SSID, MESH_PASSWORD, &userScheduler, MESH_PORT);
 	
@@ -23,6 +23,8 @@ void GangMesh::setup() {
 
 	userScheduler.addTask(taskCalculateDelay);
 	taskCalculateDelay.enable();
+	
+	meshStatusLightOn = false;	
 	blinkNoNodes.set(BLINK_PERIOD, getNodeCount() * 2, [this]() {
         // If on, switch off, else switch on
         this->meshStatusLightOn = !this->meshStatusLightOn;

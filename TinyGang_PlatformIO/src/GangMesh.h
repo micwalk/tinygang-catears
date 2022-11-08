@@ -56,7 +56,6 @@ class GangMesh {
 
 	// Task to blink the number of mesh nodes
 	Task blinkNoNodes;
-	bool meshStatusLightOn = false;
 
 	int32_t m_meshTimeOffset = 0;
 
@@ -66,6 +65,8 @@ class GangMesh {
 	}
 
    public:
+	bool meshStatusLightOn = false;
+   
 	GangMesh() : taskCalculateDelay(TASK_SECOND * 1, TASK_FOREVER,
 	                                std::bind(&GangMesh::sendDelayMessage, this)),
 				 m_nodeData(2, MAX_PEERS, 2, false),
@@ -79,7 +80,7 @@ class GangMesh {
 	// Run mesh update
 	void update() {
 		mesh.update();
-		digitalWrite(STATUS_LED, !meshStatusLightOn);
+		digitalWrite(PIN_LED_STATUS, meshStatusLightOn ? LOW : HIGH);
 
 		if (m_localIp != getlocalIP()) {
 			m_localIp = getlocalIP();

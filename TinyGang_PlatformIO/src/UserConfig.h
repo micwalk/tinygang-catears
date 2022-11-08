@@ -11,15 +11,29 @@
 //***********************************************************
 // LED CONFIG
 
-// What pin is your LED strip attached to?
-const unsigned char LED_PIN = 14;  // 14 on lhs board, 4 on rhs
+#ifdef  PLATFORM_XIAO_C3
+// STATUS LED -- some gpio pin that is connected to an LED to incicate wifi status. change to the right number of your LED.
+const uint8_t PIN_LED_STATUS = D0;
+// LED STRIP --What pin is your LED strip attached to?
+const unsigned char PIN_LED_STRIP_1 = D1;
+#endif  //PLATFORM_XIAO_C3
+
+#ifdef  PLATFORM_UPESY
+// STATUS LED -- some gpio pin that is connected to an LED to incicate wifi status. change to the right number of your LED.
+const uint8_t PIN_LED_STATUS = LED_BUILTIN; 
+// LED STRIP -- What pin is your LED strip attached to?
+const unsigned char PIN_LED_STRIP_1 = 14;  // 14 on lhs board, 4 on rhs
+#endif  //PLATFORM_UPESY
+
+
 // How many LEDs are in it?
-const uint32_t NUM_LEDS = 72;//74
+const uint32_t NUM_LEDS = 25;//93;//74
+
 // What type of LED strip?
 #define CHIPSET WS2812B
 #define COLOR_ORDER GRB
 // Power limiting settings
-const uint8_t LED_BRIGHTNESS = 70; //Out of 255
+const uint8_t LED_BRIGHTNESS = 10; //Out of 255
 const uint8_t MAX_VOLTS = 5;
 const uint32_t MAX_MILLIAMPS = 500;
 
@@ -32,11 +46,6 @@ enum RenderType {
 //Change this to normal or mirrored
 const RenderType RENDER_TYPE = RENDER_NORMAL;
 
-// STATUS LED
-// some gpio pin that is connected to an LED to incicate wifi status. change to the right number of your LED.
-#define STATUS_LED LED_BUILTIN  // GPIO number of connected LED, ON ESP-12 IS GPIO2
-
-
 //***********************************************************
 // PATTERN SELECTOR CONFIG
 //
@@ -44,7 +53,7 @@ const RenderType RENDER_TYPE = RENDER_NORMAL;
 // Three methods supported: push button, dip switch, or const
 
 //Default pattern
-const int DEFAULT_PATTERN = 0;
+const int DEFAULT_PATTERN = 3;
 
 
 // Uncomment the define relevant to your hardware
@@ -56,7 +65,13 @@ const int DEFAULT_PATTERN = 0;
 #if defined(PATTERN_SELECT_PUSHBTN)
     // PUSH BUTTON Config
     #include "OneButton.h"
-    const uint8_t PUSHBUTTON_PIN = 12;
+#ifdef  PLATFORM_XIAO_C3
+const uint8_t PUSHBUTTON_PIN = D2;
+#endif
+#ifdef  PLATFORM_UPESY
+const uint8_t PUSHBUTTON_PIN = 12;
+#endif
+    
     void onPatternChangeClick();
 #elif defined(PATTERN_SELECT_DIPSWITCH)
     // DIP SWITCHES Config
@@ -80,3 +95,4 @@ const int MAX_PEERS = 100;
 
 
 #endif  //!__USERCONFIG__H__
+
