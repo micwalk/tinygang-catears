@@ -14,7 +14,7 @@
 // What pin is your LED strip attached to?
 const unsigned char LED_PIN = 14;  // 14 on lhs board, 4 on rhs
 // How many LEDs are in it?
-const uint32_t NUM_LEDS = 72;//74
+const uint32_t NUM_LEDS = 76;// 93+ 19*2;//74
 // What type of LED strip?
 #define CHIPSET WS2812B
 #define COLOR_ORDER GRB

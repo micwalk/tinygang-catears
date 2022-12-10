@@ -69,6 +69,8 @@ void updateOwnNodeData() {
 
 elapsedMillis rescheduleTimerFailsafe;
 
+#include "WebServer.h"
+
 void setup() {
 	const unsigned long BAUD = 921600;
 	// put your setup code here, to run once:
@@ -77,6 +79,11 @@ void setup() {
 	Serial.println(__FILE__);
 	Serial.println(__DATE__);
 
+	Serial.printf("Total heap: %d\n", ESP.getHeapSize());
+	Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
+	Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
+	Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
+  
 #if defined(PATTERN_SELECT_PUSHBTN)
 	// Setup pushbutton
 	cyclePatternBtn.attachClick(onPatternChangeClick);
@@ -99,6 +106,8 @@ void setup() {
 	patternRunner.SetPatternSlot(0, m_ownNodeData, 0, PATTERN_DURATION_MS);
 	
 	gangMesh.setup();
+	
+	serverSetup();
 }
 
 void handleKeyboardInput() {
