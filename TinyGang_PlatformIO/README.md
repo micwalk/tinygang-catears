@@ -36,6 +36,7 @@ MPU 6050 Accelerometer + Gyroscope: https://www.amazon.com/dp/B00LP25V1A
 Random bits : https://www.amazon.com/dp/B01ERP6WL4?psc=1&ref=ppx_yo2ov_dt_b_product_details
 330 ohm resistor on data line
 100 uf capacitor on power line
+220 ohm on the status led
 
 power bank 5000mah https://www.amazon.com/dp/B0B468F282?psc=1&ref=ppx_yo2ov_dt_b_product_details
 note: this power bank is rather large, good for shoving in pocket and running a wire up to head, not so much for attaching to ears.

@@ -3,17 +3,24 @@
    the base code is developed by @mpinner and @adellelin for two jacket
    interaction and is to be expanded for multiple players
 
-   Enhancements made by Michael Walker to support PlatformIO IDE, and 
+   Enhancements made by Michael Walker to support PlatformIO IDE, and
    enable deterministic scheduling for larger meshes.
 */
 
 #include <Arduino.h>
+#include "WiFi.h"
 
 // *** LOOKING TO CHANGE WHAT PIN YOU HAVE ATTACHED? ***
 // *** SEE UserConfig.h ***
 #include "UserConfig.h"
 
 // Note: for these two, must include FastLED and elapsedMillis libraries in your Audrino IDE/platformIO
+#define FASTLED_ALLOW_INTERRUPTS 0 //Should disable handing interrupts after sending each pixel, disable interrupts for entire length of transmission
+#define FASTLED_INTERRUPT_RETRY_COUNT 1 //Not sure what this does 
+#define FASTLED_RMT_MAX_CHANNELS 1 //Reserves less RMT channels
+ 
+// #define FASTLED_ESP32_I2S true //Try to use I2S instead of RMT. Fails to compile.
+// #define FASTLED_RMT_BUILTIN_DRIVER 1 //Disables all output...idk
 #include <FastLED.h>
 #include <elapsedMillis.h>
 
@@ -57,7 +64,7 @@ void checkPatternTimer();
 int getChosenPattern();
 void show();
 
-//Helper class for 
+//Helper class for
 GangMesh gangMesh;
 
 //Function to update own node data.
@@ -73,7 +80,23 @@ elapsedMillis rescheduleTimerFailsafe;
 // #define SIZE 232879
 // char dummy[SIZE] = {'a'};
 
+
+// This failed workaround comes from:
+// Issue: https://github.com/FastLED/FastLED/issues/849
+// Code: https://github.com/stnkl/FastLEDHub/commit/54bbaf1d12c89977501e1dea95f9347ae0a954ed
+// //Define custom controller timings
+// template <uint8_t DATA_PIN, EOrder GRB_ORDER = GRB, int WAIT_TIME = 5>
+// class WS2812Controller800Khz_noflicker : public ClocklessController<DATA_PIN, C_NS(250), C_NS(625), C_NS(375), GRB_ORDER, 0, false, WAIT_TIME> {};
+// template<uint8_t DATA_PIN, EOrder GRB_ORDER>
+// class WS2812B_noflicker : public WS2812Controller800Khz_noflicker<DATA_PIN, RGB_ORDER> {};
+//
+// Then in setup init with:
+// FastLED.addLeds<WS2812B_noflicker, PIN_LED_STRIP_1>(render_leds, NUM_LEDS);
+
+
 void setup() {
+	//What's up with all the delay calls? The ESP32C3 is weird AF. thats why.
+	
 	const unsigned long BAUD = 921600;
 	// put your setup code here, to run once:
 	Serial.begin(BAUD);
@@ -87,7 +110,7 @@ void setup() {
 
 	// dummy[SIZE-1] = '\n';
     // if(dummy[0] == 'a') Serial.println("Hello, bloated world");
-	
+
 #if defined(PATTERN_SELECT_PUSHBTN)
 	// Setup pushbutton
 	cyclePatternBtn.attachClick(onPatternChangeClick);
@@ -100,24 +123,37 @@ void setup() {
 #endif
 	// No setup needed for const pattern select
 
+	// delay(150);
+	pinMode(PIN_LED_STATUS, OUTPUT);
+	
 	delay(150);
 	//Setup FastLED
 	// TODO: Better user configurable LED setup
-	FastLED.addLeds<CHIPSET, PIN_LED_STRIP_1, COLOR_ORDER>(render_leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-	FastLED.setBrightness(LED_BRIGHTNESS);
-	FastLED.setMaxPowerInVoltsAndMilliamps(MAX_VOLTS, MAX_MILLIAMPS);
+	FastLED.addLeds<CHIPSET, PIN_LED_STRIP_1, COLOR_ORDER>(render_leds, NUM_LEDS);//.setCorrection(TypicalLEDStrip);
+	// FastLED.setBrightness(LED_BRIGHTNESS);
+	// FastLED.setMaxPowerInVoltsAndMilliamps(MAX_VOLTS, MAX_MILLIAMPS);
+	
+	FastLED.clear();
+
+	std::fill(std::begin(render_leds), std::end(render_leds), CRGB::Black);
+	FastLED.show();
+  
+	
 	// FastLED.setDither(0);
 	delay(150);
+	
 	//Setup pattern runner
 	patternRunner.setup();
 	patternRunner.SetPatternSlot(0, m_ownNodeData, 0, PATTERN_DURATION_MS);
 	rescheduleTimerFailsafe = PATTERN_DURATION_MS*2;
-	
+
 	delay(150);
 	//Setup wifi mesh
-	gangMesh.setup();
-	// delay(150);
-	pinMode(PIN_LED_STATUS, OUTPUT);
+	// gangMesh.setup();
+	
+	WiFi.softAP("junk", "123456");
+	
+	
 }
 
 void handleKeyboardInput() {
@@ -130,20 +166,28 @@ void handleKeyboardInput() {
 		receiveKeyboardMsg(inChar);
 	}
 }
+
+// unsigned main_loop_ct = 0;
+void otherLoop(); //fwd declare
+
 void loop() {
 // Only btn PUSHBTN needs a loop callback.
 #if defined(PATTERN_SELECT_PUSHBTN)
 	cyclePatternBtn.tick();
 #endif
 
-	handleKeyboardInput();
-	checkPatternTimer();
-	broadcastPattern();
-	patternRunner.updateLedColors();  // TODO: send legacy_inbound_hue again?
-	show();
-	gangMesh.update();
+	// handleKeyboardInput();
+	// checkPatternTimer();
+	// broadcastPattern();
+	// patternRunner.updateLedColors();  // TODO: send legacy_inbound_hue again?
+	// show();
+	// gangMesh.update();
+
+	// Serial.printf("%u: Loop? %u\n", millis(), main_loop_ct++);
+
+	// delay(10);
 	
-	delay(10);
+	otherLoop();
 }
 
 #if defined(PATTERN_SELECT_PUSHBTN)
@@ -190,13 +234,13 @@ void show() {
 				render_leds[i] = patternRunner.m_outBuffer[i];
 			}
 			break;
-		// Scratch code for only doing the middle	
+		// Scratch code for only doing the middle
 		// case RENDER_MIDDLE:
 		// 	float middlePortion = .66f;
 		// 	float halfMid = (1-middlePortion) / 2;
 		// 	int startLed = (int) (halfMid * NUM_LEDS);
 		// 	int endLed = (int) ((1-halfMid) * NUM_LEDS);
-			
+
 		// 	for (int i = startLed; i < endLed; i++) {
 		// 		render_leds[i] = patternRunner.m_outBuffer[i];
 		// 	}
@@ -215,7 +259,7 @@ void checkPatternTimer() {
 	updateOwnNodeData();
 
 	bool patternChanged = oldPatternId != m_ownNodeData.nodePattern;
-	
+
 	if (patternChanged) {
 		Serial.printf("Own pattern switch detected from %i to %i\n", oldPatternId, m_ownNodeData.nodePattern);
 		lastBroadcastTime = BROADCAST_REPEAT_TIME + 1;
@@ -223,13 +267,13 @@ void checkPatternTimer() {
 		// TODO: Create startPattern / pattern renderer class and pattern selector class.
 		rescheduleLightsCallbackMain();
 	}
-	
+
 	if(patternRunner.GetNumActivePatterns() == 0 && rescheduleTimerFailsafe > PATTERN_DURATION_MS/2) {
 		Serial.printf("%u: No patterns active!\n", millis());
 		rescheduleLightsCallbackMain();
 		rescheduleTimerFailsafe = 0;
 	}
-	
+
 	return;
 }
 
@@ -286,21 +330,20 @@ void receiveMeshMsg(uint32_t nodeName, SharedNodeData nodeData) {
 void rescheduleLightsCallbackMain() {
 	auto& allNodes = gangMesh.getNodeList();
 	auto nodeCount = allNodes.size();
-	
+
 	Serial.printf("%u: *Pattern Scheduler* Triggered reschedule with %u nodes\n", millis(), nodeCount);
 	if(nodeCount == 0) {
 		Serial.printf("%u:   bailing bc no nodes\n", millis());
 		return;
 	}
-	
+
 	unsigned long myMicros = micros();
 	uint32_t meshMicros = gangMesh.mesh.getNodeTime();
 	int meshDiff = meshMicros - myMicros; //TODO: Rollover protection...can just change type i think?
 
-	Serial.printf("%u: Pattern Scheduler: MyMicros: %u MeshMicros: %u (diff: %i)\n",
-					millis(), myMicros, meshMicros, meshDiff);
+	// Serial.printf("%u: Pattern Scheduler: MyMicros: %u MeshMicros: %u (diff: %i)\n",
+	// 				millis(), myMicros, meshMicros, meshDiff);
 
-	
 	uint32_t totalRepeatMicros = PATTERN_DURATION_MICROS * nodeCount;
 	uint32_t intervalPortion = meshMicros % totalRepeatMicros;
 
@@ -308,13 +351,13 @@ void rescheduleLightsCallbackMain() {
 	uint32_t lastStartTime = meshMicros - intervalPortion;
 	uint32_t nextStartTime = lastStartTime + totalRepeatMicros;
 
-	Serial.printf("%u [%u]: Pattern Scheduler: Currently %u into pattern repeat. Current round lasts from [%u - %u] mesh. [%u - %u] local \n",
-					millis(), micros(), intervalPortion, lastStartTime, nextStartTime, gangMesh.TimeMeshToLocal(lastStartTime), gangMesh.TimeMeshToLocal(nextStartTime));
+	// Serial.printf("%u [%u]: Pattern Scheduler: Currently %u into pattern repeat. Current round lasts from [%u - %u] mesh. [%u - %u] local \n",
+	// 				millis(), micros(), intervalPortion, lastStartTime, nextStartTime, gangMesh.TimeMeshToLocal(lastStartTime), gangMesh.TimeMeshToLocal(nextStartTime));
 
 	patternRunner.StopAllPatterns();
 	size_t nodeIdx = 0;
 	for (auto& nodeId : allNodes) {
-		
+
 		//Get Node data
 		SharedNodeData *whichNodeData = 0;
 		if(gangMesh.mesh.getNodeId() == nodeId) {
@@ -326,32 +369,108 @@ void rescheduleLightsCallbackMain() {
 			//Other, lookup
 			whichNodeData = &gangMesh.m_nodeData[nodeId];
 		}
-		
+
 		//Figure out schedule
 		uint32_t nodeStartTime = lastStartTime + PATTERN_DURATION_MICROS * nodeIdx - PATTERN_OVERLAP_MICROS;
 		uint32_t nodeEndTime = lastStartTime + PATTERN_DURATION_MICROS * (1+nodeIdx) + PATTERN_OVERLAP_MICROS;
-		
-		Serial.printf("%u: (Node %u Id: %u ) Pattern Scheduler: Slot: [%u-%u]mesh [%u-%u]local\n",
-					millis(), nodeIdx, nodeId, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
+
+		// Serial.printf("%u: (Node %u Id: %u ) Pattern Scheduler: Slot: [%u-%u]mesh [%u-%u]local\n",
+		// 			millis(), nodeIdx, nodeId, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
 
 		//TODO: make rollover safe -- needs to compare duration not current time.
 		if(nodeEndTime < meshMicros) {
-			//push it to the next one instead			
+			//push it to the next one instead
 			nodeStartTime = nextStartTime + PATTERN_DURATION_MICROS * nodeIdx - PATTERN_OVERLAP_MICROS;
 			nodeEndTime   = nextStartTime + PATTERN_DURATION_MICROS * (1+nodeIdx) + PATTERN_OVERLAP_MICROS;
-			
-			Serial.printf("%u: (Node %u Id: %u ) Pattern Scheduler: Shifting since slot expired. New Slot: [%u-%u]mesh [%u-%u]local\n",
-					millis(), nodeIdx, nodeId, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
+
+			// Serial.printf("%u: (Node %u Id: %u ) Pattern Scheduler: Shifting since slot expired. New Slot: [%u-%u]mesh [%u-%u]local\n",
+			// 		millis(), nodeIdx, nodeId, nodeStartTime, nodeEndTime, gangMesh.TimeMeshToLocal(nodeStartTime), gangMesh.TimeMeshToLocal(nodeEndTime));
 		}
-		
+
 		//Convert to local, add overlap
 		uint32_t nodeStartLocal = gangMesh.TimeMeshToLocal(nodeStartTime);
 		//todo: overlap rollover?
-		
+
 		//Actually update info and trigger pattern
 		//TODO: convert to passing ptrs all through code.
 		patternRunner.SetPatternSlot(nodeIdx, *whichNodeData, nodeStartLocal, PATTERN_DURATION_MICROS + 2*PATTERN_OVERLAP_MICROS);
 		nodeIdx++;
-	}//End loop over nodes	
-	
+	}//End loop over nodes
+
 } //end rescheduleLightsCallbackMain()
+
+
+///Debug code -- alternate light code
+
+
+// Define the array of leds
+const size_t NUM_COLORS = 5;
+CRGB colorList[NUM_COLORS] = {CRGB::Red, CRGB::Purple, CRGB::Green, CRGB::DeepPink, CRGB::RoyalBlue};
+int colorIdx = 0;
+
+
+const uint32_t innerDelay = 50;
+const uint32_t outterDelay = 100;
+unsigned int loopCt = 0;
+
+bool onboardOn = true;
+
+void slowColorLeds() {
+  //Start next transition
+  colorIdx = (colorIdx + 1) % NUM_COLORS;
+  CRGB nextColor = colorList[colorIdx];
+
+  int stripMid = NUM_LEDS/2; // 72/2=36
+  for (int i = 0; i <= stripMid; i++)
+  {
+    int hi = std::min(stripMid + i, (int) NUM_LEDS-1);
+    int lo = std::max(stripMid - i,  0);
+
+    // Serial.printf("%u | i= %i. hi=%i, lo=%i \n", loopCt, i, hi, lo);
+
+    render_leds[hi] = nextColor;
+    render_leds[lo] = nextColor;
+
+  // for (int i = 0; i < NUM_LEDS; i++)
+  // {
+  //   int hi = i;
+  //   leds[hi] = nextColor;
+    delay(innerDelay);
+    FastLED.show();
+  }
+}
+void otherLoop() {
+
+  loopCt++;
+
+    Serial.printf("%u | loop %b\n", loopCt, onboardOn);
+
+
+  if(loopCt < 20){
+    delay(50);
+    onboardOn = !onboardOn;
+    digitalWrite(PIN_LED_STATUS, onboardOn ? HIGH : LOW);
+    // mpu_loop();
+
+    return;
+  }
+
+
+  //Flip the onboard
+  onboardOn = !onboardOn;
+  digitalWrite(PIN_LED_STATUS, onboardOn ? HIGH : LOW);
+
+  // mpu_loop();
+  // colorLedByPitch();
+//   slowColorLeds();
+
+	std::fill(std::begin(render_leds), std::end(render_leds), CRGB(0,0,5)); //CRGB(0,0,10)
+	FastLED.show();
+	
+  // delay(10);
+  // FastLED.show();
+  //I sleeps
+  delay(outterDelay);
+}
+
+

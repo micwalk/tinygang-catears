@@ -67,8 +67,8 @@ struct ScheduledPattern {
 			duration = durationMicros;	
 		}
 		
-		Serial.printf("%u [%u]: Sched(a_start:%u) %s timeSinceSchedule:%u, startDelay:%u, duration:%u\n",
-			millis(), now, start, schedPast ? "PAST" : "FUTURE" , timeSinceSchedule, startDelay, duration);
+		// Serial.printf("%u [%u]: Sched(a_start:%u) %s timeSinceSchedule:%u, startDelay:%u, duration:%u\n",
+		// 	millis(), now, start, schedPast ? "PAST" : "FUTURE" , timeSinceSchedule, startDelay, duration);
 		
 	}
 };

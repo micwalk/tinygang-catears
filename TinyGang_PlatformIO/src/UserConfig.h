@@ -27,7 +27,7 @@ const unsigned char PIN_LED_STRIP_1 = 14;  // 14 on lhs board, 4 on rhs
 
 
 // How many LEDs are in it?
-const uint32_t NUM_LEDS = 25;//93;//74
+const uint32_t NUM_LEDS = 32; //25;//93;//74
 
 // What type of LED strip?
 #define CHIPSET WS2812B
