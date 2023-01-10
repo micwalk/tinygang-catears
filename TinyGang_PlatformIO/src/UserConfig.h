@@ -12,9 +12,9 @@
 // LED CONFIG
 
 // What pin is your LED strip attached to?
-const unsigned char LED_PIN = 14;  // 14 on lhs board, 4 on rhs
+const unsigned char LED_PIN = 19; // 14 on lhs esp32 node board, 4 on rhs
 // How many LEDs are in it?
-const uint32_t NUM_LEDS = 72;//74
+const uint32_t NUM_LEDS = 140; //74
 // What type of LED strip?
 #define CHIPSET WS2812B
 #define COLOR_ORDER GRB
@@ -56,7 +56,7 @@ const int DEFAULT_PATTERN = 0;
 #if defined(PATTERN_SELECT_PUSHBTN)
     // PUSH BUTTON Config
     #include "OneButton.h"
-    const uint8_t PUSHBUTTON_PIN = 12;
+    const uint8_t PUSHBUTTON_PIN = 18;
     void onPatternChangeClick();
 #elif defined(PATTERN_SELECT_DIPSWITCH)
     // DIP SWITCHES Config
