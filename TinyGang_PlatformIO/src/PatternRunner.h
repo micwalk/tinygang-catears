@@ -195,6 +195,11 @@ class PatternRunner {
 
 				const LedPosition& posInfo = LED_POSITIONS[j];
 				
+				
+				if(posInfo.idWire == 0) {
+					Serial.printf("%u: writing to wireid 0 from led j = %u\n  \t%i, %i \n", millis(), m_lastActivePatterns, j, posInfo.idBlender, posInfo.idSection);
+				}
+					
 				m_outBuffer[posInfo.idWire] = patternAlgo->paintLed(j, posInfo, deltaMicros, remaining, m_outBuffer[j], scheduledPattern.nodeData.hue);
 			}
 		}

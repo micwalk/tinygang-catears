@@ -12,5 +12,6 @@
 // };
 
 SpatialPattern* PATTERN_LIBRARY[PATTERNS_COUNT] = {
+	new VerticalSweep(),
 	new SpatialDebugger()
 };

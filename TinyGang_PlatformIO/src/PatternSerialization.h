@@ -20,9 +20,10 @@ conversion into a single char by using the PATTERN_COMMANDS array.
 #include "Arduino.h"
 
 #include "SpatialPatterns/SpatialDebugger.h"
+#include "SpatialPatterns/VerticalSweep.h"
 
 // Number of PATTERN_LIBRARY. Must be compile time constant
-constexpr size_t PATTERNS_COUNT = 1;
+constexpr size_t PATTERNS_COUNT = 2;
 extern SpatialPattern *PATTERN_LIBRARY[PATTERNS_COUNT];
 
 constexpr char PATTERN_COMMANDS[] = {
@@ -33,7 +34,7 @@ constexpr char PATTERN_COMMANDS[] = {
 const size_t SERIALIZED_PATTERN_COUNT = std::min(PATTERNS_COUNT, sizeof(PATTERN_COMMANDS));
 
 //Static hue, to be replaced by network comms
-constexpr int PATTERN_HUE[] = {0};
+constexpr int PATTERN_HUE[] = {HUE_AQUA, 0};
 static_assert(
 	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
 	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
