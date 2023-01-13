@@ -2,7 +2,7 @@
 #define __MESHSTUFF__H__
 
 #include "PatternSerialization.h"
-#include "UserConfig.h"
+#include "config/UserConfig.h"
 #include "ustd_map.h"
 
 // TODO: Make this a proper header that be included in multiple cpp files without

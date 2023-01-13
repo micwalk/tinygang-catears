@@ -11,7 +11,7 @@
 
 // *** LOOKING TO CHANGE WHAT PIN YOU HAVE ATTACHED? ***
 // *** SEE UserConfig.h ***
-#include "UserConfig.h"
+#include "config/UserConfig.h"
 
 // Note: for these two, must include FastLED and elapsedMillis libraries in your Audrino IDE/platformIO
 #include <FastLED.h>

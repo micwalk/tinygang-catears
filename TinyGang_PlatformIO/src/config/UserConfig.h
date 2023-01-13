@@ -19,7 +19,7 @@ const uint32_t NUM_LEDS = 140; //74
 #define CHIPSET WS2812B
 #define COLOR_ORDER GRB
 // Power limiting settings
-const uint8_t LED_BRIGHTNESS = 70; //Out of 255
+const uint8_t LED_BRIGHTNESS = 20; //Out of 255
 const uint8_t MAX_VOLTS = 5;
 const uint32_t MAX_MILLIAMPS = 500;
 

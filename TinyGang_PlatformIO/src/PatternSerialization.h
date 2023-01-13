@@ -18,17 +18,12 @@ conversion into a single char by using the PATTERN_COMMANDS array.
 
 // For String
 #include "Arduino.h"
-#include "patterns/BassShader.h"
-#include "patterns/BodyTwinkler.h"
-#include "patterns/BookendFlip.h"
-#include "patterns/BookendTrace.h"
-#include "patterns/RainbowSparkle.h"
-#include "patterns/Twinkler.h"
-#include "patterns/WhiteTrace.h"
 
-// Number of patterns. Must be compile time constant
-constexpr size_t PATTERNS_COUNT = 7;
-extern Pattern *patterns[PATTERNS_COUNT];
+#include "SpatialPatterns/SpatialDebugger.h"
+
+// Number of PATTERN_LIBRARY. Must be compile time constant
+constexpr size_t PATTERNS_COUNT = 1;
+extern SpatialPattern *PATTERN_LIBRARY[PATTERNS_COUNT];
 
 constexpr char PATTERN_COMMANDS[] = {
 	'q', 'a', 'z',
@@ -38,12 +33,7 @@ constexpr char PATTERN_COMMANDS[] = {
 const size_t SERIALIZED_PATTERN_COUNT = std::min(PATTERNS_COUNT, sizeof(PATTERN_COMMANDS));
 
 //Static hue, to be replaced by network comms
-constexpr int PATTERN_HUE[] = {0, 20, 255, 229, 120, 200, 207};
-// 120 should be green, not cyan
-// 229 pink
-// 22 orange
-// 200 lilac
-// 'a' green
+constexpr int PATTERN_HUE[] = {0};
 static_assert(
 	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
 	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
