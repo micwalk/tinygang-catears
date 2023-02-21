@@ -19,12 +19,16 @@ conversion into a single char by using the PATTERN_COMMANDS array.
 // For String
 #include "Arduino.h"
 
-#include "SpatialPatterns/SpatialDebugger.h"
-#include "SpatialPatterns/VerticalSweep.h"
+#include "SpatialPatterns/SpatialPattern.h"
 
 // Number of PATTERN_LIBRARY. Must be compile time constant
-constexpr size_t PATTERNS_COUNT = 2;
+constexpr size_t PATTERNS_COUNT = 5;
+//Static hue, to be replaced by network comms
+constexpr int PATTERN_HUE[] = {0, HUE_PINK, 0, HUE_AQUA, 0};
 extern SpatialPattern *PATTERN_LIBRARY[PATTERNS_COUNT];
+static_assert(
+	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
+	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
 
 constexpr char PATTERN_COMMANDS[] = {
 	'q', 'a', 'z',
@@ -32,12 +36,6 @@ constexpr char PATTERN_COMMANDS[] = {
 	'e', 'd', 'c',
 	'r', 'f', 'v'};
 const size_t SERIALIZED_PATTERN_COUNT = std::min(PATTERNS_COUNT, sizeof(PATTERN_COMMANDS));
-
-//Static hue, to be replaced by network comms
-constexpr int PATTERN_HUE[] = {HUE_AQUA, 0};
-static_assert(
-	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
-	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
 
 // Intentionally using signed int so we can use negative as invalid flag;
 using PatternReference = int;

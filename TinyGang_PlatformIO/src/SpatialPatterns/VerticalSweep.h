@@ -10,16 +10,18 @@ class VerticalSweep final : public SpatialPattern {
         
         float relVertPos = (position.position.y + 100) / 200;
         
-        float scanLinePos = 1 - remaining;
+        float scanLinePos = remaining;
         
         // trace
-		if (abs(scanLinePos - relVertPos) < .1) {
+		if (abs(scanLinePos - relVertPos) < .1
+            || abs(scanLinePos - relVertPos) < .6 && abs(scanLinePos - relVertPos) >= .4
+            || abs(scanLinePos - relVertPos) > .9) {
 			return CHSV(primaryHue, 255, 255);
 		}
 		
 		// return CHSV(220, 200, 128); // pink
 		// fade
-		return previous.nscale8(10);
+		return previous.nscale8(192);
         
 	}
 };

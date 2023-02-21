@@ -1,5 +1,11 @@
 #include "PatternSerialization.h"
 
+#include "SpatialPatterns/SpatialDebugger.h"
+#include "SpatialPatterns/VerticalSweep.h"
+#include "SpatialPatterns/ColorWheel.h"
+#include "SpatialPatterns/RandomTwinkle.h"
+#include "SpatialPatterns/Headlights.h"
+
 //Static pattern library forming implicit index -> pattern map.
 // Pattern* PATTERN_LIBRARY[PATTERNS_COUNT] = {
 // 	new BodyTwinkler(),    // 0 red yellow sparkle short
@@ -12,6 +18,9 @@
 // };
 
 SpatialPattern* PATTERN_LIBRARY[PATTERNS_COUNT] = {
+	new RandomTwinkle(),
+	new ColorWheel(),
 	new VerticalSweep(),
+	new Headlights(),
 	new SpatialDebugger()
 };

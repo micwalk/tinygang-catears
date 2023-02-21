@@ -131,9 +131,7 @@ void loop() {
 	broadcastPattern();
 	patternRunner.updateLedColors();  // TODO: send legacy_inbound_hue again?
 	show();
-	gangMesh.update();
-	
-	delay(10);
+	gangMesh.update();	
 }
 
 #if defined(PATTERN_SELECT_PUSHBTN)
