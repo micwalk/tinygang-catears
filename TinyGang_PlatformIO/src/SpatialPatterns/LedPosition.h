@@ -18,10 +18,10 @@ struct polar2 {
 };
 
 struct LedPosition {
-    int idBlender; // AKA array index of LED_POSITIONS -- Order Blender happend to iterate over
-    int idWire;
-    LedSection section;
-    int idSection;
+    int idBlender; // AKA array index of LED_POSITIONS -- Order Blender happend to iterate over. Not Too Helpful.
+    int idWire; //Wire position, use raw for a chase.
+    LedSection section; //What section, ears or band
+    int idSection; //Position within section, use for cooler chaser when properly configured.
     vec2 position;
     polar2 relCenter;
     polar2 relLeft;

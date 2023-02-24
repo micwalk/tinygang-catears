@@ -14,7 +14,7 @@
 // What pin is your LED strip attached to?
 const unsigned char LED_PIN = 19; // 14 on lhs esp32 node board, 4 on rhs
 // How many LEDs are in it?
-const uint32_t NUM_LEDS = 128; //Full ears: (100 + 19 * 2) = 138
+const uint32_t NUM_LEDS = 128; //New ears normal 66 band, wide 68 band: (66 + 19 * 2) = 104
 // What type of LED strip?
 #define CHIPSET WS2812B
 #define COLOR_ORDER GRB
