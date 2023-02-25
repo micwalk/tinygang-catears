@@ -22,7 +22,7 @@ conversion into a single char by using the PATTERN_COMMANDS array.
 #include "SpatialPatterns/SpatialPattern.h"
 
 // Number of PATTERN_LIBRARY. Must be compile time constant
-constexpr uint8_t PATTERNS_COUNT = 8; //Only uint8 to make save/read from eeprom simpler to write.
+constexpr uint8_t PATTERNS_COUNT = 9; //Only uint8 to make save/read from eeprom simpler to write.
 //These are defined in the .cpp
 extern SpatialPattern *PATTERN_LIBRARY[PATTERNS_COUNT];
 

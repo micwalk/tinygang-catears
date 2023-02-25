@@ -21,12 +21,13 @@
 
 //update note: go to the cpp
 SpatialPattern* PATTERN_LIBRARY[PATTERNS_COUNT] = {
-	new Chaser(HUE_PINK, 30, true, true),
-	new Chaser(HUE_AQUA, 15, false, false),
-	new Chaser(HUE_GREEN, 30, true),
-	new Chaser(HUE_PURPLE, 30, true),
+	new Chaser(HUE_PINK, 10, 1, true, true),
+	new Chaser(HUE_AQUA, 15, 2, false, false, 15),
+	new Chaser(HUE_GREEN, 20, .7, false, true),
+	new Chaser(HUE_PURPLE, 30, 5, true),
 	new RandomTwinkle(), //COLOR?
-	new ColorWheel(), //add speed mod
+	new ColorWheel(1.0), //add speed mod
+	new ColorWheel(3.0), //add speed mod
 	new VerticalSweep(HUE_RED), //ADD COLOR. red.
 	new VerticalSweep(HUE_BLUE), //ADD COLOR. red.
 	// new Headlights() //kinda just debug, probably drop.

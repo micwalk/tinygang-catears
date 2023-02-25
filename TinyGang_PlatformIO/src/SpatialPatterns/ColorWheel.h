@@ -4,12 +4,19 @@
 
 
 class ColorWheel final : public SpatialPattern {
-    uint8_t hueShift = 0;
+	public:
+    uint32_t shiftInterval = 1000000; //Approx 4s/revolution?
 	
-	uint32_t shiftInterval = 1000000; //Approx 4s/revolution?
-	
+	private:
+	uint8_t hueShift = 0;
 	uint32_t timeAccum = 0;
 	
+	public:
+
+	ColorWheel(float speedMult = 1) {
+		shiftInterval =  1000000 / speedMult;
+	}
+
 	CRGB paintSpatialLed(unsigned ledIndex, const LedContext& context, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {    
 		//Logic: map angle (-180,180) to hue (0,255)
 		// then shift mapping w/ deltatime and speed

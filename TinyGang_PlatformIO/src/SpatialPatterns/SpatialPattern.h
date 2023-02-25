@@ -24,6 +24,54 @@ class SpatialPattern {
     ///
 	/// @return New CRGB color of the LED
 	virtual CRGB paintSpatialLed(unsigned ledIndex, const LedContext& context, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) = 0;
+
+	protected:
+
+	// Easy interpolation
+
+		//also look for:
+		//quadwave8 -- drop in for sin, faster
+		// cubicwave8 -- harsher transitions, more time spent at peak.
+		// triwave8 -- triangle wave, linear interpolation but with same domain as above.
+
+
+	byte FalloffSin(float inputValue, float maxBright = 1, float minBright = 0) {
+		// float chaseCenterPos = fmod(chasePosition, patternCount) - m_width;
+		// float distToCenter = abs(thisLedPos - chaseCenterPos);
+		// distToCenter = fmod(distToCenter, patternCount);
+		// float relDist = distToCenter / m_width;
+
+		//Bail if range is gonna be zero
+		if(minBright == maxBright) {
+			return inputValue == maxBright ? 255 : 0;
+		}
+
+		//check for max < min
+		bool inverted = false;
+		if(minBright > maxBright) {
+			//inverted logic
+			inverted = true;
+			//Swap min and max
+			float tmp = minBright;
+			minBright = maxBright;
+			maxBright = tmp;
+		}
+
+		byte brightness = 255;
+		if(inputValue < minBright) brightness = 0;
+		else if(inputValue > maxBright) brightness = 255;
+		else {
+			float range = maxBright - minBright;
+			float scaledInput = (inputValue - minBright) / range;
+
+			byte sinInput = (int)(scaledInput*128) + 64;
+			brightness = quadwave8(sinInput);
+		}
+		
+		if(inverted) brightness = 255 - brightness;
+		return brightness;
+	}
+			
 };
 
 #endif  //!__SPATIALPATTERN__H__

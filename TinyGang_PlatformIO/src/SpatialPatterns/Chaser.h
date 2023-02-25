@@ -21,12 +21,16 @@ class Chaser final : public SpatialPattern {
 	bool m_reversed = false; //Default low pixel to high pixel, true to reverse high to low.
 	bool m_mirror = true; // two chasers ending/starting in the middle. non reversed starts on ears.
 
+	byte m_hueRotation = 0;
 
-	Chaser(byte hue, float width = 15, bool reversed = false, bool mirrored = true) {
+	Chaser(byte hue, float width = 15, float speedMult = 1, bool reversed = false, bool mirrored = true, byte hueRotationAmt = 0) {
 		m_hue = hue;
 		m_width = width;
 		m_reversed = reversed;
 		m_mirror = mirrored;
+		m_hueRotation = hueRotationAmt;
+
+		inverseSpeed = 5000000 / speedMult; //micros between pixels
 	}
 
 	//enum falloff_type -- linear, sin, spherical, etc.
@@ -37,13 +41,20 @@ class Chaser final : public SpatialPattern {
 	private:
 	float chasePosition = 0;
 	//inverseSpeed -- delay time to wait between units in delta micros.
-	const unsigned inverseSpeed = 5000000; //micros between pixels
+	unsigned inverseSpeed = 5000000; //Time in micros it takes to move chaser center to next pixel
 	unsigned long patternRuntime = 0;
 	
+	// bool m_hueChangeReady = false;
+	float m_lastPos = 0;
+
 	public:
 
 	CRGB paintSpatialLed(unsigned ledIndex, const LedContext& context, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {
-        
+		// if(ledIndex == 0) {
+		// 	Serial.printf("pattern run %u. chasepos: %f centerpos %f\n", patternRuntime, chasePosition, chaseCenterPos);
+		// }
+
+
 		//Get position of led
 		float thisLedPos;
 		unsigned patternCount = context.Count;
@@ -64,16 +75,25 @@ class Chaser final : public SpatialPattern {
 		}
 
 		float chaseCenterPos = fmod(chasePosition, patternCount) - m_width;
+		if(chaseCenterPos <= m_lastPos) {
+			m_hue += m_hueRotation;
+		}
+		m_lastPos = chaseCenterPos;
+
         // float chaseCenterPos = (1-remaining) * (float) patternCount ;//deltaMicros * last position
 
 		float distToCenter = abs(thisLedPos - chaseCenterPos);
 		distToCenter = fmod(distToCenter, patternCount);
+		
 		float relDist = distToCenter / m_width;
 		
-		if(ledIndex == 0) {
-			// Serial.printf("pattern run %u. chasepos: %f centerpos %f\n", patternRuntime, chasePosition, chaseCenterPos);
-		}
+		// if(ledIndex == 0) {
+		// 	Serial.printf("pattern run %u. chasepos: %f centerpos %f\n", patternRuntime, chasePosition, chaseCenterPos);
+		// }
 
+		//NOT WORKING
+		// byte brightness = FalloffSin(distToCenter, m_width, 0);	
+		
 		byte brightness = 255;
 
 		//simple square implementaion
@@ -89,15 +109,6 @@ class Chaser final : public SpatialPattern {
 		} else {
 			brightness = 0;
 		}
-		
-		
-
-		// brightness = waveValue;
-
-		//also look for:
-		//quadwave8 -- drop in for sin, faster
-		// cubicwave8 -- harsher transitions, more time spent at peak.
-		// triwave8 -- triangle wave, linear interpolation but with same domain as above.
 
         return CHSV(m_hue, 255, brightness);
 	}
