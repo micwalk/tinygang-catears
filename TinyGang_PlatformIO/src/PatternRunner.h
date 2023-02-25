@@ -5,6 +5,9 @@
 
 #include "PatternSerialization.h"
 
+#include "config/UserConfig.h"
+extern LedPosition LED_POSITIONS[NUM_LEDS];
+
 // When keeping track of running patterns, we need to know
 // both the Shared Node pattern info as well as timing information
 // When to start running it, when to stop running it.
@@ -30,8 +33,8 @@ struct ScheduledPattern {
 		return timeSinceSchedule - startDelay;
 	}
 	
-	Pattern* GetPattern() const{
-		return patterns[nodeData.nodePattern];
+	SpatialPattern* GetPattern() const{
+		return PATTERN_LIBRARY[nodeData.nodePattern];
 	}
 
 	// Returns a float in range [0-1] where 1 Represents full time remaining and 0 represents no time remaining
@@ -72,7 +75,7 @@ struct ScheduledPattern {
 		
 	}
 };
-
+	
 template <unsigned int LED_COUNT>
 class PatternRunner {
    private:
@@ -92,19 +95,27 @@ class PatternRunner {
 		return mask;
 	}
 	
+	elapsedMicros m_deltaTime;
+	
+	LedContext m_context;
+
    public:
 	// Just making this buffer public to avoid more complicated getters
 	CRGB m_outBuffer[LED_COUNT];
 
-	PatternRunner() : m_patternSchedules(2, MAX_PEERS, 2, false) {
+	PatternRunner() : 
+		m_patternSchedules(2, MAX_PEERS, 2, false), 
+		m_context(LED_COUNT, LED_POSITIONS) {
+			
 		// Init pattern schedules
 		// Original logic: Create one schedule for each pattern. Pre-define hues
 		// for (size_t i = 0; i < PATTERNS_COUNT; i++) {
 		// 	// Init userPattern for this scheduled pattern.
 		// 	m_patternSchedules[i].userPattern.patternRef = i;
-		// 	m_patternSchedules[i].userPattern.hue = PATTERN_HUE[i];
 		// 	m_patternSchedules[i].ScheduleNow(m_durationMs);
 		// }
+		
+		m_deltaTime = 0;
 	}
 	~PatternRunner() = default;
 
@@ -160,6 +171,7 @@ class PatternRunner {
 
 	// Called on main.setup
 	void setup() {
+		//Fill buffer
 		for (int i = 0; i < LED_COUNT; i++) {
 			m_outBuffer[i] = CHSV(255 / LED_COUNT * i, 255 / LED_COUNT * i, 255);
 		}
@@ -169,19 +181,31 @@ class PatternRunner {
 	// TODO: migrate to .cpp?
 	void updateLedColors() {
 		m_lastActivePatterns = 0;
+		
+		//Calculate, reset, and freeze delta time.
+		uint32_t deltaMicros = m_deltaTime;
+		m_deltaTime = 0;
+		//TODO: per pattern delta time.
+		
 		for (ScheduledPattern& scheduledPattern : m_patternSchedules) {
 			if (!scheduledPattern.IsActive()) continue;
 			m_lastActivePatterns++;
 			
 			//Execute pattern on all pixels
-			for (int j = 0; j < LED_COUNT; j++) {
-				float position = (float)j / (float)LED_COUNT;
+			for (unsigned j = 0; j < LED_COUNT; j++) {
+				float relPosition = (float) j / (float)LED_COUNT;
 				float remaining = scheduledPattern.RelativeRemaining();
-				Pattern* patternAlgo = scheduledPattern.GetPattern();
+				SpatialPattern* patternAlgo = scheduledPattern.GetPattern();
+
+				const LedPosition& posInfo = LED_POSITIONS[j];
 				
-				// TODO: re-introduce the concept of inboundHue (renamed to legacy_inbound_hue), which isn't sent / changed currently
-				//  This also includes the idea of self color => pattern_hue lookup vs inbound hue for self vs other patterns
-				m_outBuffer[j] = patternAlgo->paintLed(position, remaining, m_outBuffer[j], scheduledPattern.nodeData.hue);
+				
+				// if(posInfo.idWire == 0) {
+				// 	Serial.printf("%u: writing to wireid 0 from led j = %u\n  \t%i, %i \n", millis(), m_lastActivePatterns, j, posInfo.idBlender, posInfo.idSection);
+				// }
+					
+				m_outBuffer[posInfo.idWire] = patternAlgo->paintSpatialLed(j, m_context, posInfo, deltaMicros, remaining, m_outBuffer[j], scheduledPattern.nodeData.hue);
+				//todo: add m_context param for relative position
 			}
 		}
 

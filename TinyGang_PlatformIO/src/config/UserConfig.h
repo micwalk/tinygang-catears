@@ -14,12 +14,13 @@
 // What pin is your LED strip attached to?
 const unsigned char LED_PIN = 19; // 14 on lhs esp32 node board, 4 on rhs
 // How many LEDs are in it?
-const uint32_t NUM_LEDS = 140; //74
+const uint32_t NUM_LEDS = 106; //New ears normal 66 band, wide 68 band: (66 + 19 * 2) = 104
+
 // What type of LED strip?
 #define CHIPSET WS2812B
 #define COLOR_ORDER GRB
 // Power limiting settings
-const uint8_t LED_BRIGHTNESS = 70; //Out of 255
+const uint8_t LED_BRIGHTNESS = 20; //Out of 255
 const uint8_t MAX_VOLTS = 5;
 const uint32_t MAX_MILLIAMPS = 500;
 
@@ -57,7 +58,6 @@ const int DEFAULT_PATTERN = 0;
     // PUSH BUTTON Config
     #include "OneButton.h"
     const uint8_t PUSHBUTTON_PIN = 18;
-    void onPatternChangeClick();
 #elif defined(PATTERN_SELECT_DIPSWITCH)
     // DIP SWITCHES Config
     const int dipswitch_pins[] = {2, 15};

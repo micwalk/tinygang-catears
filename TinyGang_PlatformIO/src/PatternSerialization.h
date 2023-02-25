@@ -18,35 +18,20 @@ conversion into a single char by using the PATTERN_COMMANDS array.
 
 // For String
 #include "Arduino.h"
-#include "patterns/BassShader.h"
-#include "patterns/BodyTwinkler.h"
-#include "patterns/BookendFlip.h"
-#include "patterns/BookendTrace.h"
-#include "patterns/RainbowSparkle.h"
-#include "patterns/Twinkler.h"
-#include "patterns/WhiteTrace.h"
 
-// Number of patterns. Must be compile time constant
-constexpr size_t PATTERNS_COUNT = 7;
-extern Pattern *patterns[PATTERNS_COUNT];
+#include "SpatialPatterns/SpatialPattern.h"
+
+// Number of PATTERN_LIBRARY. Must be compile time constant
+constexpr uint8_t PATTERNS_COUNT = 9; //Only uint8 to make save/read from eeprom simpler to write.
+//These are defined in the .cpp
+extern SpatialPattern *PATTERN_LIBRARY[PATTERNS_COUNT];
 
 constexpr char PATTERN_COMMANDS[] = {
 	'q', 'a', 'z',
 	'w', 's', 'x',
 	'e', 'd', 'c',
 	'r', 'f', 'v'};
-const size_t SERIALIZED_PATTERN_COUNT = std::min(PATTERNS_COUNT, sizeof(PATTERN_COMMANDS));
-
-//Static hue, to be replaced by network comms
-constexpr int PATTERN_HUE[] = {0, 20, 255, 229, 120, 200, 207};
-// 120 should be green, not cyan
-// 229 pink
-// 22 orange
-// 200 lilac
-// 'a' green
-static_assert(
-	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
-	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
+const size_t SERIALIZED_PATTERN_COUNT = std::min((size_t)PATTERNS_COUNT, sizeof(PATTERN_COMMANDS));
 
 // Intentionally using signed int so we can use negative as invalid flag;
 using PatternReference = int;
@@ -75,11 +60,13 @@ struct SharedNodeData {
 	}
 	
 	void resetDefaultHue() {
-		if(isValid()){
-			hue = PATTERN_HUE[nodePattern];	
-		} else {
-			hue = 0;
-		}
+		// if(isValid()){
+		// 	hue = PATTERN_HUE[nodePattern];	
+		// } else {
+		// 	hue = 0;
+		// }
+
+		hue = 0;
 	}
 };
 
@@ -115,7 +102,7 @@ inline PatternReference DeserializePatternRef(char commandChar) {
 	SharedNodeData nodeData;
 
 	// Search by index into PATTERN_COMMANDS
-	for (int i = 0; i < std::min(PATTERNS_COUNT, SERIALIZED_PATTERN_COUNT); i++) {
+	for (int i = 0; i < std::min((size_t)PATTERNS_COUNT, SERIALIZED_PATTERN_COUNT); i++) {
 		if (commandChar == PATTERN_COMMANDS[i]) {
 			return i;
 		}

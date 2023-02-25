@@ -8,10 +8,11 @@
 */
 
 #include <Arduino.h>
+#include <EEPROM.h>
 
 // *** LOOKING TO CHANGE WHAT PIN YOU HAVE ATTACHED? ***
 // *** SEE UserConfig.h ***
-#include "UserConfig.h"
+#include "config/UserConfig.h"
 
 // Note: for these two, must include FastLED and elapsedMillis libraries in your Audrino IDE/platformIO
 #include <FastLED.h>
@@ -31,11 +32,11 @@ SharedNodeData m_ownNodeData(DEFAULT_PATTERN);
 // Pushbutton state
 //  Setup a new OneButton on pin A1.
 OneButton cyclePatternBtn(PUSHBUTTON_PIN, true);
-int chosenPattern = m_ownNodeData.nodePattern;  // Current pattern state
+uint8_t chosenPattern = m_ownNodeData.nodePattern;  // Current pattern state
 #endif
 
 // Pattern running info
-const uint32_t PATTERN_DURATION_MS = 4000; //Length each pattern plays. Note: If this isn't the same on all nodes then they won't sync up!
+const uint32_t PATTERN_DURATION_MS = 5000; //Length each pattern plays. Note: If this isn't the same on all nodes then they won't sync up!
 const unsigned PATTERN_OVERLAP_MS = 300;
 
 const uint32_t PATTERN_DURATION_MICROS = PATTERN_DURATION_MS * 1000;
@@ -71,6 +72,17 @@ elapsedMillis rescheduleTimerFailsafe;
 
 #include "WebServer.h"
 
+//fwd declares for pushbutton.asdf
+#if defined(PATTERN_SELECT_PUSHBTN)
+    void onPatternChangeClick();
+	void onHueChangeChangeClick();
+#endif
+
+//Configure saving of data
+size_t EEPROM_SIZE = 1;
+const int ADDRESS_PATTERN = 0;
+const int ADDRESS_HUE = 1;
+
 void setup() {
 	const unsigned long BAUD = 921600;
 	// put your setup code here, to run once:
@@ -84,9 +96,28 @@ void setup() {
 	Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
 	Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
   
+
+	// initialize EEPROM with predefined size
+	EEPROM.begin(EEPROM_SIZE);
+	// read the last LED state from flash memory
+	byte prevPattern = EEPROM.read(ADDRESS_PATTERN);
+	byte prevHue = EEPROM.read(ADDRESS_HUE);
+
+	Serial.printf("EEPROM Reads: previous pattern: %u hue: %u\n", prevPattern, prevHue);
+	if (prevPattern > PATTERNS_COUNT) {
+		//rather than just modulo-ing it, randomize it
+		chosenPattern = random8() % PATTERNS_COUNT;
+		Serial.printf("EEPROM Reads: previous pattern: %u hue: %u\n", prevPattern, prevHue);
+	} else { 
+		chosenPattern = prevPattern;
+	}	
+	Serial.printf("Setting pattern to %u. (PATTERNS_COUNT=%u)\n", chosenPattern, PATTERNS_COUNT);	
+
+
 #if defined(PATTERN_SELECT_PUSHBTN)
 	// Setup pushbutton
 	cyclePatternBtn.attachClick(onPatternChangeClick);
+	cyclePatternBtn.attachLongPressStart(onHueChangeChangeClick);
 	// pinMode(PUSHBUTTON_PIN, INPUT);
 #elif defined(PATTERN_SELECT_DIPSWITCH)
 	// setup dipswitch
@@ -131,16 +162,23 @@ void loop() {
 	broadcastPattern();
 	patternRunner.updateLedColors();  // TODO: send legacy_inbound_hue again?
 	show();
-	gangMesh.update();
-	
-	delay(10);
+	gangMesh.update();	
 }
 
 #if defined(PATTERN_SELECT_PUSHBTN)
+
+void onHueChangeChangeClick() {
+	Serial.printf(" button long press start callback.");
+}
+
 void onPatternChangeClick() {
 	auto btnVal = digitalRead(PUSHBUTTON_PIN);
 	int oldPattern = chosenPattern;
 	chosenPattern = (oldPattern + 1) % PATTERNS_COUNT;
+
+	EEPROM.write(ADDRESS_PATTERN, chosenPattern);
+    EEPROM.commit();
+
 	Serial.printf("%u: Button Clicked Callback!. Changing Pattern from %i to %i\n", millis(), oldPattern, chosenPattern);
 }
 #endif
