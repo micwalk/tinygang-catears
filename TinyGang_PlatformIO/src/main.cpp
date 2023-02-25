@@ -35,7 +35,7 @@ int chosenPattern = m_ownNodeData.nodePattern;  // Current pattern state
 #endif
 
 // Pattern running info
-const uint32_t PATTERN_DURATION_MS = 4000; //Length each pattern plays. Note: If this isn't the same on all nodes then they won't sync up!
+const uint32_t PATTERN_DURATION_MS = 5000; //Length each pattern plays. Note: If this isn't the same on all nodes then they won't sync up!
 const unsigned PATTERN_OVERLAP_MS = 300;
 
 const uint32_t PATTERN_DURATION_MICROS = PATTERN_DURATION_MS * 1000;

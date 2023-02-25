@@ -44,10 +44,7 @@ with open("E:\\Data\\My Documents\\Blender\\LedSpatialBlender.cpp", "w", newline
 #include "SpatialPatterns/LedPosition.h"
 """)
 
-        cppfile.write("// left ear center: {ear_left_pos.x}, {ear_left_pos.z}, {math.degrees(math.atan2(ear_left_pos.x, ear_left_pos.z))}, {ear_left_pos.length]}\n")
-        cppfile.write("// right ear center: {ear_right_pos.x}, {ear_right_pos.z}, {math.degrees(math.atan2(ear_right_pos.x, ear_right_pos.z))}, {ear_right_pos.length]}\n")
-        cppfile.write("LedPosition LED_POSITIONS[NUM_LEDS] = {\n")
-
+        
         # Write the header row
         print("id,name,x,y,center.angle,center.radius,left.angle,left.radius,right.angle,right.radius")
         csvwriter.writerow(["id", "name", "x", "y", "center.angle", "center.radius", "left.angle", "left.radius", "right.angle", "right.radius"])
@@ -57,11 +54,11 @@ with open("E:\\Data\\My Documents\\Blender\\LedSpatialBlender.cpp", "w", newline
         ear_left_pos = scale_factor * ear_left.matrix_world.to_translation()
         ear_right_pos = scale_factor * ear_right.matrix_world.to_translation()
         
+        cppfile.write(f"// left ear center: {ear_left_pos.x}, {ear_left_pos.z}, {math.degrees(math.atan2(ear_left_pos.x, ear_left_pos.z))}, {ear_left_pos.length}\n")
+        cppfile.write(f"// right ear center: {ear_right_pos.x}, {ear_right_pos.z}, {math.degrees(math.atan2(ear_right_pos.x, ear_right_pos.z))}, {ear_right_pos.length}\n")
         csvwriter.writerow([-1,"LeftEarCenter", ear_left_pos.x, ear_left_pos.z, math.degrees(math.atan2(ear_left_pos.x, ear_left_pos.z)), ear_left_pos.length])
         csvwriter.writerow([-2,"RightEarCenter", ear_right_pos.x, ear_right_pos.z, math.degrees(math.atan2(ear_right_pos.x, ear_right_pos.z)), ear_right_pos.length])
 
-        
-        
         wire_map_left  = [16, 17, 18, 7, 8, 9, 10, 11, 12, 13, 14, 15, 1, 0, 4, 3, 6, 5, 2]
         wire_map_right = [35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 37, 36, 20, 19, 23, 24, 21, 22, 25]
         name_map = {
@@ -69,6 +66,7 @@ with open("E:\\Data\\My Documents\\Blender\\LedSpatialBlender.cpp", "w", newline
             "RingLedsRight" : "LedSection::EAR_RIGHT",
             "StipLeds"      : "LedSection::BAND" }
         
+        cppfile.write("LedPosition LED_POSITIONS[NUM_LEDS] = {\n")
         led_id = 0    
         #Iterate over collection elements
         for part in active_collection.all_objects:

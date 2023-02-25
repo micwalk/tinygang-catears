@@ -4,7 +4,7 @@
 #include "SpatialPattern.h"
 
 class RandomTwinkle : public SpatialPattern {
-    virtual CRGB paintLed(unsigned ledIndex, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {
+    CRGB paintSpatialLed(unsigned ledIndex, const LedContext& context, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {
         // println("position:" + position +", remaining:" + remaining);
 		if (random(100) < 10) {
             return CHSV(random(150,250), 255, random(180,255) * (remaining + .2));

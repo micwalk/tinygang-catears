@@ -10,7 +10,7 @@ class ColorWheel final : public SpatialPattern {
 	
 	uint32_t timeAccum = 0;
 	
-	virtual CRGB paintLed(unsigned ledIndex, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {    
+	CRGB paintSpatialLed(unsigned ledIndex, const LedContext& context, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {    
 		//Logic: map angle (-180,180) to hue (0,255)
 		// then shift mapping w/ deltatime and speed
 		

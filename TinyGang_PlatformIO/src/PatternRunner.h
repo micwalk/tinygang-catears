@@ -97,11 +97,16 @@ class PatternRunner {
 	
 	elapsedMicros m_deltaTime;
 	
+	LedContext m_context;
+
    public:
 	// Just making this buffer public to avoid more complicated getters
 	CRGB m_outBuffer[LED_COUNT];
 
-	PatternRunner() : m_patternSchedules(2, MAX_PEERS, 2, false) {
+	PatternRunner() : 
+		m_patternSchedules(2, MAX_PEERS, 2, false), 
+		m_context(LED_COUNT, LED_POSITIONS) {
+			
 		// Init pattern schedules
 		// Original logic: Create one schedule for each pattern. Pre-define hues
 		// for (size_t i = 0; i < PATTERNS_COUNT; i++) {
@@ -112,7 +117,6 @@ class PatternRunner {
 		// }
 		
 		m_deltaTime = 0;
-		
 	}
 	~PatternRunner() = default;
 
@@ -168,6 +172,7 @@ class PatternRunner {
 
 	// Called on main.setup
 	void setup() {
+		//Fill buffer
 		for (int i = 0; i < LED_COUNT; i++) {
 			m_outBuffer[i] = CHSV(255 / LED_COUNT * i, 255 / LED_COUNT * i, 255);
 		}
@@ -189,7 +194,7 @@ class PatternRunner {
 			
 			//Execute pattern on all pixels
 			for (unsigned j = 0; j < LED_COUNT; j++) {
-				float position = (float)j / (float)LED_COUNT;
+				float relPosition = (float) j / (float)LED_COUNT;
 				float remaining = scheduledPattern.RelativeRemaining();
 				SpatialPattern* patternAlgo = scheduledPattern.GetPattern();
 
@@ -200,7 +205,8 @@ class PatternRunner {
 					Serial.printf("%u: writing to wireid 0 from led j = %u\n  \t%i, %i \n", millis(), m_lastActivePatterns, j, posInfo.idBlender, posInfo.idSection);
 				}
 					
-				m_outBuffer[posInfo.idWire] = patternAlgo->paintLed(j, posInfo, deltaMicros, remaining, m_outBuffer[j], scheduledPattern.nodeData.hue);
+				m_outBuffer[posInfo.idWire] = patternAlgo->paintSpatialLed(j, m_context, posInfo, deltaMicros, remaining, m_outBuffer[j], scheduledPattern.nodeData.hue);
+				//todo: add m_context param for relative position
 			}
 		}
 

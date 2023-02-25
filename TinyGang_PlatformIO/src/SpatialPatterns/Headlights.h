@@ -5,7 +5,7 @@
 #include "SpatialPattern.h"
 
 class Headlights : public SpatialPattern {
-    virtual CRGB paintLed(unsigned ledIndex, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {
+    CRGB paintSpatialLed(unsigned ledIndex,const LedContext& context, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {
         // println("position:" + position +", remaining:" + remaining);
 		// switch (position.section)
         // {

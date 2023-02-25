@@ -4,9 +4,8 @@
 
 #include "SpatialPattern.h"
 
-class VerticalSweep final : public SpatialPattern {
-    
-	virtual CRGB paintLed(unsigned ledIndex, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {
+class VerticalSweep final : public SpatialPattern { 
+	CRGB paintSpatialLed(unsigned ledIndex, const LedContext& context, const LedPosition& position, unsigned long deltaMicros, float remaining, CRGB previous, int primaryHue) {
         
         float relVertPos = (position.position.y + 100) / 200;
         

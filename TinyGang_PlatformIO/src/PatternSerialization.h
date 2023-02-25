@@ -22,13 +22,13 @@ conversion into a single char by using the PATTERN_COMMANDS array.
 #include "SpatialPatterns/SpatialPattern.h"
 
 // Number of PATTERN_LIBRARY. Must be compile time constant
-constexpr size_t PATTERNS_COUNT = 5;
+constexpr size_t PATTERNS_COUNT = 6;
 //Static hue, to be replaced by network comms
-constexpr int PATTERN_HUE[] = {0, HUE_PINK, 0, HUE_AQUA, 0};
+// constexpr int PATTERN_HUE[] = {0, HUE_PINK, 0, HUE_AQUA, 0};
+
+//These are defined in the .cpp
+extern int PATTERN_HUE[];
 extern SpatialPattern *PATTERN_LIBRARY[PATTERNS_COUNT];
-static_assert(
-	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
-	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
 
 constexpr char PATTERN_COMMANDS[] = {
 	'q', 'a', 'z',
