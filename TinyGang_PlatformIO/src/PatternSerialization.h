@@ -22,7 +22,8 @@ conversion into a single char by using the PATTERN_COMMANDS array.
 #include "SpatialPatterns/SpatialPattern.h"
 
 // Number of PATTERN_LIBRARY. Must be compile time constant
-constexpr size_t PATTERNS_COUNT = 6;
+constexpr uint8_t PATTERNS_COUNT = 6; //Only uint8 to make save/read from eeprom simpler to write.
+
 //Static hue, to be replaced by network comms
 // constexpr int PATTERN_HUE[] = {0, HUE_PINK, 0, HUE_AQUA, 0};
 
@@ -35,7 +36,7 @@ constexpr char PATTERN_COMMANDS[] = {
 	'w', 's', 'x',
 	'e', 'd', 'c',
 	'r', 'f', 'v'};
-const size_t SERIALIZED_PATTERN_COUNT = std::min(PATTERNS_COUNT, sizeof(PATTERN_COMMANDS));
+const size_t SERIALIZED_PATTERN_COUNT = std::min((size_t)PATTERNS_COUNT, sizeof(PATTERN_COMMANDS));
 
 // Intentionally using signed int so we can use negative as invalid flag;
 using PatternReference = int;
@@ -104,7 +105,7 @@ inline PatternReference DeserializePatternRef(char commandChar) {
 	SharedNodeData nodeData;
 
 	// Search by index into PATTERN_COMMANDS
-	for (int i = 0; i < std::min(PATTERNS_COUNT, SERIALIZED_PATTERN_COUNT); i++) {
+	for (int i = 0; i < std::min((size_t)PATTERNS_COUNT, SERIALIZED_PATTERN_COUNT); i++) {
 		if (commandChar == PATTERN_COMMANDS[i]) {
 			return i;
 		}

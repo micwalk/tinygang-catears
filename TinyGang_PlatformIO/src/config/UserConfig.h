@@ -58,7 +58,6 @@ const int DEFAULT_PATTERN = 0;
     // PUSH BUTTON Config
     #include "OneButton.h"
     const uint8_t PUSHBUTTON_PIN = 18;
-    void onPatternChangeClick();
 #elif defined(PATTERN_SELECT_DIPSWITCH)
     // DIP SWITCHES Config
     const int dipswitch_pins[] = {2, 15};
