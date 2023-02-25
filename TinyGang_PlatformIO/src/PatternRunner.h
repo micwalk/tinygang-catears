@@ -112,7 +112,6 @@ class PatternRunner {
 		// for (size_t i = 0; i < PATTERNS_COUNT; i++) {
 		// 	// Init userPattern for this scheduled pattern.
 		// 	m_patternSchedules[i].userPattern.patternRef = i;
-		// 	m_patternSchedules[i].userPattern.hue = PATTERN_HUE[i];
 		// 	m_patternSchedules[i].ScheduleNow(m_durationMs);
 		// }
 		

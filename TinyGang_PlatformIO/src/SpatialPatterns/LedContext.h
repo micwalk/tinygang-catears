@@ -14,22 +14,41 @@ class LedContext {
     const vec2 LeftEarCenter = {66.17855834960938, 55.993038177490234};
     const vec2 RightEarCenter = {-66.18331146240234, 55.990379333496094};
 
+    const byte EarLedCount = 19;
+
     unsigned int Count;
     LedPosition* Positions;
+
+    unsigned LastLedPos;
 
     LedContext(unsigned int count, LedPosition* positions) {
         Count = count;
         Positions = Positions;
+
+        LastLedPos = Count - 1;
     }
 
-    float RelativePosition(unsigned ledIdx) {
-        return (float) ledIdx / (float) Count;
+    float RelativePosition(unsigned ledIdx) const {
+        return (float) ledIdx / (float) LastLedPos;
     }
 
-    const LedPosition& PositionInfo(unsigned ledIdx) {
+    const LedPosition& PositionInfo(unsigned ledIdx) const {
         return Positions[ledIdx];
     }
+    
+    int ChasePosNice(int rawWirePos) const {
+        int newPos = rawWirePos - EarLedCount;
+        if(newPos < 0) newPos += Count;
+        return newPos;
+    }
 
+    int ChasePosMirror(int rawWirePos) const {
+        int basePos = ChasePosNice(rawWirePos);
+        if(basePos > Count/2) {
+			basePos = (LastLedPos) - basePos;
+		}
+        return basePos;
+    }
 
     //section count?
 };

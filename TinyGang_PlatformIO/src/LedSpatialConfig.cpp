@@ -4,6 +4,16 @@
 #include "SpatialPatterns/LedPosition.h"
 // left ear center: {ear_left_pos.x}, {ear_left_pos.z}, {math.degrees(math.atan2(ear_left_pos.x, ear_left_pos.z))}, {ear_left_pos.length]}
 // right ear center: {ear_right_pos.x}, {ear_right_pos.z}, {math.degrees(math.atan2(ear_right_pos.x, ear_right_pos.z))}, {ear_right_pos.length]}
+
+	//int idBlender; // AKA array index of LED_POSITIONS -- Order Blender happend to iterate over. Not Too Helpful.
+    // int idWire; //Wire position, use raw for a chase.
+    // LedSection section; //What section, ears or band
+    // int idSection; //Position within section, use for cooler chaser when properly configured.
+    // vec2 position;
+    // polar2 relCenter;
+    // polar2 relLeft;
+    // polar2 relRight;
+
 LedPosition LED_POSITIONS[NUM_LEDS] = {
 	{ 0, 16, LedSection::EAR_LEFT, 0, { 66.17858123779297,64.5484390258789 }, { 45.71443094073211,92.5137409159452 } , { 0.00015328286118660453,8.74967514527961 }, { 86.30060347598211,132.63968391356474 } }, 
 	{ 1, 17, LedSection::EAR_LEFT, 1, { 66.17858123779297,55.9930419921875 }, { 49.76577043133265,86.76123547420494 } , { 80.53767779197439,1.8335561690611006 }, { 89.99884740915857,132.3633082399393 } }, 

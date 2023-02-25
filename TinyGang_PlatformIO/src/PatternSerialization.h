@@ -22,13 +22,8 @@ conversion into a single char by using the PATTERN_COMMANDS array.
 #include "SpatialPatterns/SpatialPattern.h"
 
 // Number of PATTERN_LIBRARY. Must be compile time constant
-constexpr uint8_t PATTERNS_COUNT = 6; //Only uint8 to make save/read from eeprom simpler to write.
-
-//Static hue, to be replaced by network comms
-// constexpr int PATTERN_HUE[] = {0, HUE_PINK, 0, HUE_AQUA, 0};
-
+constexpr uint8_t PATTERNS_COUNT = 8; //Only uint8 to make save/read from eeprom simpler to write.
 //These are defined in the .cpp
-extern int PATTERN_HUE[];
 extern SpatialPattern *PATTERN_LIBRARY[PATTERNS_COUNT];
 
 constexpr char PATTERN_COMMANDS[] = {
@@ -65,11 +60,13 @@ struct SharedNodeData {
 	}
 	
 	void resetDefaultHue() {
-		if(isValid()){
-			hue = PATTERN_HUE[nodePattern];	
-		} else {
-			hue = 0;
-		}
+		// if(isValid()){
+		// 	hue = PATTERN_HUE[nodePattern];	
+		// } else {
+		// 	hue = 0;
+		// }
+
+		hue = 0;
 	}
 };
 

@@ -19,17 +19,16 @@
 // 	new BookendFlip()      // 6
 // };
 
+//update note: go to the cpp
 SpatialPattern* PATTERN_LIBRARY[PATTERNS_COUNT] = {
-	new Chaser(),
-	new RandomTwinkle(),
-	new ColorWheel(),
-	new VerticalSweep(),
-	new Headlights(),
-	new SpatialDebugger()
+	new Chaser(HUE_PINK, 30, true, true),
+	new Chaser(HUE_AQUA, 15, false, false),
+	new Chaser(HUE_GREEN, 30, true),
+	new Chaser(HUE_PURPLE, 30, true),
+	new RandomTwinkle(), //COLOR?
+	new ColorWheel(), //add speed mod
+	new VerticalSweep(HUE_RED), //ADD COLOR. red.
+	new VerticalSweep(HUE_BLUE), //ADD COLOR. red.
+	// new Headlights() //kinda just debug, probably drop.
+	// new SpatialDebugger()
 };
-
-int PATTERN_HUE[] = {HUE_PURPLE, 0, HUE_PINK, 0, HUE_AQUA, 0};
-
-static_assert(
-	PATTERNS_COUNT == (sizeof(PATTERN_HUE) / sizeof(PATTERN_HUE[0])),
-	"PATTERN_HUE doesn't match size of PATTERNS_COUNT");
